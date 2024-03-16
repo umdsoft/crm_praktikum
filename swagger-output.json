@@ -1,0 +1,233 @@
+{
+  "swagger": "2.0",
+  "info": {
+    "title": "Green Project API for education | Praktikum Academy",
+    "description": "Green Project API for education | Praktikum Academy",
+    "version": "1.0.0"
+  },
+  "host": "localhost:5000",
+  "basePath": "/",
+  "schemes": [
+    "http"
+  ],
+  "securityDefinitions": {
+    "apiKeyAuth": {
+      "type": "apiKey",
+      "in": "header",
+      "name": "Bearer",
+      "description": "Some description..."
+    }
+  },
+  "paths": {
+    "/api/user/register": {
+      "post": {
+        "description": "",
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "description": "Registratsiyadan o‘tish | Kerakli maydonlarni to‘ldiring",
+            "schema": {
+              "type": "object",
+              "properties": {
+                "name": {
+                  "type": "string",
+                  "example": "Umidbek Jumaniyozov"
+                },
+                "email": {
+                  "type": "string",
+                  "example": "info@praktikum-academy.uz"
+                },
+                "login": {
+                  "type": "string",
+                  "example": "praktikum_admin"
+                },
+                "password": {
+                  "type": "string",
+                  "example": "qiyin parol"
+                }
+              },
+              "required": [
+                "name",
+                "email",
+                "login",
+                "password"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/user/login": {
+      "post": {
+        "description": "",
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "description": "Avtorizatsiya qilish",
+            "schema": {
+              "type": "object",
+              "properties": {
+                "login": {
+                  "type": "string",
+                  "example": "praktikum_admin"
+                },
+                "password": {
+                  "type": "string",
+                  "example": "qiyin parol"
+                }
+              },
+              "required": [
+                "login",
+                "password"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "404": {
+            "description": "Not Found"
+          },
+          "500": {
+            "description": "Internal Server Error"
+          }
+        }
+      }
+    },
+    "/api/user/refresh-token": {
+      "post": {
+        "description": "",
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "schema": {
+              "type": "object",
+              "properties": {
+                "refreshToken": {
+                  "example": "any"
+                }
+              }
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "400": {
+            "description": "Bad Request"
+          }
+        }
+      }
+    },
+    "/api/user/edit-user": {
+      "put": {
+        "description": "",
+        "parameters": [
+          {
+            "name": "bearer",
+            "in": "header",
+            "type": "string"
+          },
+          {
+            "name": "body",
+            "in": "body",
+            "schema": {
+              "type": "object",
+              "properties": {
+                "password": {
+                  "example": "any"
+                },
+                "email": {
+                  "example": "any"
+                },
+                "phone": {
+                  "example": "any"
+                },
+                "name": {
+                  "example": "any"
+                }
+              }
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      }
+    },
+    "/api/user/me": {
+      "get": {
+        "description": "",
+        "parameters": [
+          {
+            "name": "bearer",
+            "in": "header",
+            "type": "string"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      }
+    },
+    "/api/user/get-all": {
+      "get": {
+        "description": "",
+        "parameters": [
+          {
+            "name": "bearer",
+            "in": "header",
+            "type": "string"
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "type": "string"
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "type": "string"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        },
+        "security": [
+          {
+            "apiKeyAuth": []
+          }
+        ]
+      }
+    }
+  }
+}
