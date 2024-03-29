@@ -8,7 +8,9 @@ const morgan = require("morgan");
 
 const swaggerUi = require("swagger-ui-express");
 const swaggerDocument = require("./swagger-output.json");
-
+app.get("/", (req, res) => {
+  res.send("Hello World!");
+});
 app.use(
   "/api-docs",
   swaggerUi.serve,
