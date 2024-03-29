@@ -47,6 +47,6 @@ app.use(cors());
 app.use(morgan("tiny"));
 app.use("/images", express.static(path.join(__dirname, "images")));
 app.use("/api", require("./router/index"));
-app.listen(5000, () => {
+app.listen(5002, () => {
   console.log("run server");
 });
