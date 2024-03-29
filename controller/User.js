@@ -30,6 +30,7 @@ exports.register = async (req, res) => {
   const salt = await bcrypt.genSaltSync(12);
   const password = await bcrypt.hashSync(req.body.password, salt);
   const candidate = await Users.query().where("phone", req.body.phone).first();
+
   if (candidate) {
     return res.status(200).json({ success: false, msg: "user-yes" });
   }
@@ -37,7 +38,6 @@ exports.register = async (req, res) => {
     .insert({
       password,
       role: req.body.role,
-      email: req.body.email,
       phone: req.body.phone,
       name: req.body.name,
     })
