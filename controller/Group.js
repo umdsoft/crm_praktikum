@@ -6,7 +6,8 @@ const Time = require("../models/Time");
 const Student = require("../models/Student");
 const GroupStudent = require("../models/GroupStudent");
 const GrupStudentPay = require("../models/GroupStudentPay");
-
+const SocialStatus = require("../models/SocialStatus");
+const Project = require("../models/Project");
 exports.create = async (req, res) => {
   try {
     const direction = await Direction.query()
@@ -172,9 +173,45 @@ exports.getOneCourseData = async (req, res) => {
     left join student s on gsp.student_id = s.id
     WHERE gsp.group_id = ${req.params.id} and YEAR(gsp.payment_date) = YEAR(CURRENT_DATE()) and MONTH(gsp.payment_date) = MONTH(CURRENT_DATE());
       `);
-    return res
-      .status(200)
-      .json({ success: true, group, groupStudents: groupStudents[0], payment: payment[0]});
+    return res.status(200).json({
+      success: true,
+      group,
+      groupStudents: groupStudents[0],
+      payment: payment[0],
+    });
+  } catch (e) {
+    console.log(e);
+  }
+};
+exports.getServices = async (req, res) => {
+  try {
+    const social_status = await SocialStatus.query()
+      .select("*")
+      .orderBy("id", "desc");
+    const project = await Project.query().select("*");
+    const data = [social_status, project];
+    return res.status(200).json({ success: true, data });
+  } catch (e) {
+    console.log(e);
+  }
+};
+exports.checkStudent = async (req, res) => {
+  try {
+    const student = await Student.query().where("code", req.params.id).first();
+    const groupStudent = await GroupStudent.query()
+      .where("student_id", student.id)
+      .first();
+    if (groupStudent) {
+      return res
+        .status(200)
+        .json({ success: false, message: "Bu talaba guruhda mavjud" });
+    }
+    if (!student) {
+      return res
+        .status(200)
+        .json({ success: false, message: "Talaba topilmadi" });
+    }
+    return res.status(200).json({ success: true, student });
   } catch (e) {
     console.log(e);
   }

@@ -4,7 +4,7 @@ const authMiddleware = require("../../middleware/auth");
 
 router.get("/get-target", Lead.getTarget);
 router.post("/create", Lead.create);
-
+router.get('/by-id/:id', Lead.getById);
 router.put("/edit-action/:id", Lead.editAction);
 router.get("/get-lead", Lead.getByNew);
 

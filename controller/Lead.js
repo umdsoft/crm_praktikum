@@ -34,13 +34,13 @@ exports.getTarget = async (req, res) => {
 };
 exports.getById = async (req, res) => {
   try {
-    const lead = await Lead.query().where("id", req.params.id);
-    const interest = await LeadInterested.query().where(
-      "lead_id",
-      req.params.id
-    );
+    const lead = await Lead.query().where("id", req.params.id).first();
+    // const interest = await LeadInterested.query().where(
+    //   "lead_id",
+    //   req.params.id
+    // ).first();
 
-    return res.status(200).json({ success: true, lead, interest });
+    return res.status(200).json({ success: true, lead });
   } catch (e) {
     return res.status(400).json({ success: false, msg: e });
   }
