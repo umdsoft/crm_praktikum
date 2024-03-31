@@ -777,25 +777,89 @@ const con = [
     phone: 998937504787,
   },
   {
-    phone: 998911347773,
+    phone: 998990520304,
   },
   {
-    phone: 998997393538,
+    phone: 998883611208,
+  },
+  {
+    phone: 998919190044,
+  },
+  {
+    phone: 998939280152,
+  },
+  {
+    phone: 998940075537,
+  },
+  {
+    phone: 998931417770,
+  },
+  {
+    phone: 998886600625,
+  },
+  {
+    phone: 998941184400,
+  },
+  {
+    phone: 998939223553,
+  },
+  {
+    phone: 998995011301,
+  },
+  {
+    phone: 998992790680,
+  },
+  {
+    phone: 998886501604,
+  },
+  {
+    phone: 998945281422,
+  },
+  {
+    phone: 998919134325,
+  },
+  {
+    phone: 998945951919,
+  },
+  {
+    phone: 998949196644,
+  },
+  {
+    phone: 998976038991,
+  },
+  {
+    phone: 998937568285,
+  },
+  {
+    phone: 998932021737,
+  },
+  {
+    phone: 998995062042,
+  },
+  {
+    phone: 998931733135,
+  },
+  {
+    phone: 998972113855,
+  },
+  {
+    phone: 998946730530,
+  },
+  {
+    phone: 998911347773,
   },
 ];
 
 const axios = require("axios");
 
-const message = `Assalomu alaykum,yaxshimisiz?
+const message = `Tadbirimiz boshlanishiga oz vaqtlar qoldi!
 
-Ertaga 15:00 da budilnigizni sozlab qoying.
+Bugun siz uchun Praktikum Academyda dasturchilar uchun kerak bo'ladigan barcha ma'lumotlarni berishga tayyormiz.
 
-Chunki Praktikum Academyda dasturlashga qiziqqanlar uchun bonuslar tayyorlab qoyganmiz. 
+O'quv markazimizda sizni kutyapmiz!
 
-Ertaga sizni kutamiz)
-
-Hali joyizni band qilmagan bo'lsangiz:👇
-https://rb.gy/gw6a1h
+Manzilimiz: https://rb.gy/qcqynr
+Murojaat uchun: +998 62 227 7005
 `;
 const sendSms = async (phone) => {
   let sum = 0;
