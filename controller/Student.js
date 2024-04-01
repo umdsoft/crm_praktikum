@@ -5,6 +5,7 @@ const jwt = require("jsonwebtoken");
 const authHelper = require("../helper/authHelper");
 const secret = require("../setting/setting").jwt;
 const Token = require("../models/Token");
+const GroupStudentPay = require("../models/GroupStudentPay");
 const updateTokens = (user_id) => {
   const accessToken = authHelper.generateAccessToken(user_id);
   const refreshToken = authHelper.generateRefreshToken();
@@ -134,6 +135,18 @@ exports.getMe = async (req, res) => {
     const candidate = jwt.decode(req.headers.authorization.split(" ")[1]);
     const user = await Student.query().where("id", candidate.user_id).first();
     return res.status(200).json({ success: true, data: user });
+  } catch (e) {
+    console.log(e);
+  }
+};
+
+exports.getPayment = async (req, res) => {
+  try {
+    // const candidate = jwt.decode(req.headers.authorization.split(" ")[1]);
+
+    const user = await GroupStudentPay.query().where("student_id", 1);
+
+    return res.status(200).json({ success: true, data: myArray });
   } catch (e) {
     console.log(e);
   }

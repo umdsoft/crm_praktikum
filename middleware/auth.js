@@ -2,7 +2,7 @@ const jwt = require("jsonwebtoken");
 const { secret } = require("../setting/setting").jwt;
 
 module.exports = (req, res, next) => {
-  const authHeader = req.headers.bearer;
+  const authHeader = req.headers.authorization;
   if (!authHeader) {
     return res.status(401).json({ success: false, msg: "token-no-provided" });
   }
