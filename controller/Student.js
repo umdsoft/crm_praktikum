@@ -2,7 +2,6 @@ const Student = require("../models/Student");
 const { genNumber } = require("../setting/idNumbers");
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
-const bcrypt = require("bcryptjs");
 const authHelper = require("../helper/authHelper");
 const secret = require("../setting/setting").jwt;
 const Token = require("../models/Token");
