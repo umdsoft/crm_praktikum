@@ -142,7 +142,7 @@ exports.getMe = async (req, res) => {
 
 exports.getPayment = async (req, res) => {
   try {
-    // const candidate = jwt.decode(req.headers.authorization.split(" ")[1]);
+    const candidate = jwt.decode(req.headers.authorization.split(" ")[1]);
 
     const user = await GroupStudentPay.query().where("student_id", 1);
 

@@ -5,6 +5,7 @@ const NewLead = require("../models/NewLead");
 const LeadAction = require("../models/lead_action");
 exports.create = async (req, res) => {
   try {
+    const candidate = jwt.decode(req.headers.authorization.split(" ")[1]);
     await Lead.query()
       .insert({
         name: req.body.full_name,
@@ -17,6 +18,12 @@ exports.create = async (req, res) => {
           edit_date: new Date(),
           edit_time: new Date(),
         });
+        await LeadAction.query().insert({
+          lead_id: lead.id,
+          to:0,
+          do:0,
+          user_id: candidate.user_id
+        })
       });
 
     return res.status(200).json({ success: true });
