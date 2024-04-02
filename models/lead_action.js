@@ -5,7 +5,7 @@ Model.knex(knex)
 
 class LeadAction extends Model {
 	static get tableName() {
-		return "lead_action.js"
+		return "lead_action"
 	}
 }
 
