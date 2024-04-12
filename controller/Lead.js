@@ -4,7 +4,7 @@ const Target = require("../models/target");
 const NewLead = require("../models/NewLead");
 const LeadAction = require("../models/lead_action");
 const jwt = require("jsonwebtoken");
-const Reklama = require("../models/Reklama");
+const Reklama = require("../models/reklama");
 
 exports.create = async (req, res) => {
   try {
