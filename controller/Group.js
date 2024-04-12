@@ -8,6 +8,7 @@ const GroupStudent = require("../models/GroupStudent");
 const GrupStudentPay = require("../models/GroupStudentPay");
 const SocialStatus = require("../models/SocialStatus");
 const Project = require("../models/Project");
+const User = require("../models/User");
 exports.create = async (req, res) => {
   try {
     const direction = await Direction.query()
@@ -87,6 +88,7 @@ exports.getAllGroup = async (req, res) => {
         lesson_time time 
             ON time.id = g.time 
     ORDER BY g.status
+    LIMIT ${limit} OFFSET ${skip};
         `);
     }
     return res.status(200).json({
@@ -158,6 +160,7 @@ exports.startGroup = async (req, res) => {
 exports.getOneCourseData = async (req, res) => {
   try {
     const group = await Group.query().where("id", req.params.id).first();
+    const countGroupStudent = await GroupStudent.query().where("group_id", req.params.id).count("* as count");
     const groupStudents = await GroupStudent.knex()
       .raw(`SELECT gs.id,s.full_name, s.phone,gs.contract, p.name as project,gs.status,s.code
     FROM group_student gs
@@ -176,6 +179,7 @@ exports.getOneCourseData = async (req, res) => {
     return res.status(200).json({
       success: true,
       group,
+      countGroupStudent,
       groupStudents: groupStudents[0],
       payment: payment[0],
     });
@@ -197,21 +201,26 @@ exports.getServices = async (req, res) => {
 };
 exports.checkStudent = async (req, res) => {
   try {
+    console.log(req.params.id);
     const student = await Student.query().where("code", req.params.id).first();
+    if (!student) {
+      return res.status(200).json({ success: false, message: 1 });
+    }
     const groupStudent = await GroupStudent.query()
       .where("student_id", student.id)
       .first();
     if (groupStudent) {
-      return res
-        .status(200)
-        .json({ success: false, message: "Bu talaba guruhda mavjud" });
+      return res.status(200).json({ success: false, message: 2 });
     }
-    if (!student) {
-      return res
-        .status(200)
-        .json({ success: false, message: "Talaba topilmadi" });
-    }
-    return res.status(200).json({ success: true, student });
+    return res.status(200).json({ success: true });
+  } catch (e) {
+    console.log(e);
+  }
+};
+exports.getAllMentor = async (req, res) => {
+  try {
+    const mentor = await User.query().where("role", 8).select("id", "name");
+    return res.status(200).json({ success: true, data: mentor });
   } catch (e) {
     console.log(e);
   }

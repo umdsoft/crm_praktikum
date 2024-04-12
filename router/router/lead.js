@@ -2,10 +2,11 @@ const Lead = require("../../controller/Lead");
 const router = require("express").Router();
 const authMiddleware = require("../../middleware/auth");
 
-router.get("/get-target", Lead.getTarget);
-router.post("/create", Lead.create);
-router.get('/by-id/:id', Lead.getById);
-router.put("/edit-action/:id", Lead.editAction);
-router.get("/get-lead", Lead.getByNew);
+router.get("/get-target", authMiddleware, Lead.getTarget);
+router.post("/create", authMiddleware, Lead.create);
+router.post("/create-site", Lead.createSite);
+router.get("/by-id/:id", authMiddleware, Lead.getById);
+router.put("/edit-action/:id", authMiddleware, Lead.editAction);
+router.get("/get-lead", authMiddleware, Lead.getByNew);
 
 module.exports = router;

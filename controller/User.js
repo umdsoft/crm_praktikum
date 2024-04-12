@@ -4,6 +4,8 @@ const bcrypt = require("bcryptjs");
 const authHelper = require("../helper/authHelper");
 const secret = require("../setting/setting").jwt;
 const Token = require("../models/Token");
+const { signUpValidator } = require("../helper/validator");
+const Role = require("../models/Role");
 const updateTokens = (user_id) => {
   const accessToken = authHelper.generateAccessToken(user_id);
   const refreshToken = authHelper.generateRefreshToken();
@@ -15,22 +17,14 @@ const updateTokens = (user_id) => {
       refreshToken: refreshToken.token,
     }));
 };
-
+exports.getRole = async (req, res) => {
+  const role = await Role.query().orderBy("id", "desc");
+  return res.status(200).json({ success: true, data: role });
+};
 exports.register = async (req, res) => {
-  /*  #swagger.parameters['body'] = {
-            in: 'body',
-            description: 'Registratsiyadan o‘tish | Kerakli maydonlarni to‘ldiring',
-            schema: {
-                $name: 'Umidbek Jumaniyozov',
-                $email: 'info@praktikum-academy.uz',
-                $login: 'praktikum_admin',
-                $password: 'qiyin parol'
-            }
-    } */
   const salt = await bcrypt.genSaltSync(12);
-  const password = await bcrypt.hashSync(req.body.password, salt);
+  const password = await bcrypt.hashSync(req.body.phone, salt);
   const candidate = await Users.query().where("phone", req.body.phone).first();
-
   if (candidate) {
     return res.status(200).json({ success: false, msg: "user-yes" });
   }
@@ -40,6 +34,8 @@ exports.register = async (req, res) => {
       role: req.body.role,
       phone: req.body.phone,
       name: req.body.name,
+      status: 1,
+      created: new Date(),
     })
     .catch((err) => {
       console.log(err);
@@ -49,15 +45,15 @@ exports.register = async (req, res) => {
 };
 
 exports.login = async (req, res) => {
-  /*  #swagger.parameters['body'] = {
-            in: 'body',
-            description: 'Avtorizatsiya qilish',
-            schema: {
-                $login: 'praktikum_admin',
-                $password: 'qiyin parol'
-            }
-    } */
   try {
+    console.log(req.body)
+    // const { error, value } = signUpValidator.validate(req.body);
+    // if (error) {
+    //   console.log(error);
+    //   return res
+    //     .status(400)
+    //     .json({ success: false, msg: error.details[0].message });
+    // }
     const user = await Users.query().where("phone", req.body.phone).first();
     if (!user) {
       return res
@@ -110,7 +106,7 @@ exports.getAllUsers = async (req, res) => {
   const limit = req.query.limit || 10;
   const skip = (req.query.page - 1) * limit;
   const users = await Users.query()
-    .select("*")
+    .select("id", "name", "phone", "role", "created", "status")
     .orderBy("id", "desc")
     .limit(limit)
     .offset(skip);
@@ -140,10 +136,14 @@ exports.editUser = async (req, res) => {
 };
 
 exports.me = async (req, res) => {
-  const candidate = jwt.decode(req.headers.bearer);
-  const user = await Users.query()
-    .where("id", candidate.user_id)
-    .first()
-    .select("name", "email", "phone", "role");
-  return res.status(200).json({ success: true, data: user });
+  try {
+    const candidate = jwt.decode(req.headers.authorization.split(" ")[1]);
+    const user = await Users.query()
+      .where("id", candidate.user_id)
+      .first()
+      .select("name", "phone");
+    return res.status(200).json({ success: true, data: user });
+  } catch (e) {
+    console.log(e);
+  }
 };

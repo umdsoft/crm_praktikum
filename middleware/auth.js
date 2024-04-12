@@ -1,7 +1,7 @@
 const jwt = require("jsonwebtoken");
 const { secret } = require("../setting/setting").jwt;
-
-module.exports = (req, res, next) => {
+const User = require("../models/User");
+module.exports = async (req, res, next) => {
   const authHeader = req.headers.authorization;
   if (!authHeader) {
     return res.status(401).json({ success: false, msg: "token-no-provided" });
@@ -20,5 +20,8 @@ module.exports = (req, res, next) => {
       return res.status(401).json({ success: false, msg: "invalid-token" });
     }
   }
+  const candidate = jwt.decode(token);
+  const user = await User.query().findById(candidate.user_id);
+  req.user = user;
   next();
 };
