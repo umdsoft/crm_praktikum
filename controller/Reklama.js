@@ -1,5 +1,5 @@
 const e = require("express");
-const Reklama = require("../models/Reklama");
+const Reklama = require("../models/reklama");
 const ShortUrl = require("../models/ShortUrl");
 const { generateRandomText } = require("../setting/randomString");
 exports.createAds = (req, res) => {
