@@ -6,6 +6,7 @@ const authHelper = require("../helper/authHelper");
 const secret = require("../setting/setting").jwt;
 const Token = require("../models/Token");
 const GroupStudentPay = require("../models/GroupStudentPay");
+const { signUpValidator } = require("../helper/validator");
 const updateTokens = (user_id) => {
   const accessToken = authHelper.generateAccessToken(user_id);
   const refreshToken = authHelper.generateRefreshToken();
@@ -75,15 +76,14 @@ exports.getAll = async (req, res) => {
 };
 
 exports.login = async (req, res) => {
-  /*  #swagger.parameters['body'] = {
-            in: 'body',
-            description: 'Avtorizatsiya qilish',
-            schema: {
-                $login: 'praktikum_admin',
-                $password: 'qiyin parol'
-            }
-    } */
   try {
+    const { error, value } = signUpValidator.validate(req.body);
+    if (error) {
+      console.log(error);
+      return res
+        .status(400)
+        .json({ success: false, msg: error.details[0].message });
+    }
     const user = await Student.query().where("phone", req.body.phone).first();
     if (!user) {
       return res

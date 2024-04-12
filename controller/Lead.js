@@ -4,6 +4,8 @@ const Target = require("../models/target");
 const NewLead = require("../models/NewLead");
 const LeadAction = require("../models/lead_action");
 const jwt = require("jsonwebtoken");
+const Reklama = require("../models/Reklama");
+
 exports.create = async (req, res) => {
   try {
     const candidate = jwt.decode(req.headers.authorization.split(" ")[1]);
@@ -45,6 +47,58 @@ exports.create = async (req, res) => {
               to: 0,
               do: 0,
               user_id: candidate.user_id,
+            });
+          });
+      });
+
+    return res.status(200).json({ success: true });
+  } catch (e) {
+    return console.log(e);
+  }
+};
+exports.createSite = async (req, res) => {
+  try {
+    const reklama = await Reklama.query()
+      .where("utm_id", req.body.utm_id)
+      .first();
+    const old_lead = await Lead.query().where("phone", req.body.phone).first();
+    if (old_lead) {
+      await NewLead.query()
+        .insert({
+          lead_id: old_lead.id,
+          target_id: reklama.target_id,
+          edit_date: new Date(),
+          edit_time: new Date(),
+          reklama_id: reklama.id
+        })
+        .then(async (newLead) => {
+          await LeadAction.query().insert({
+            lead_id: newLead.id,
+            to: 0,
+            do: 0,
+          });
+        });
+      return res.status(200).json({ success: true });
+    }
+    await Lead.query()
+      .insert({
+        name: req.body.full_name,
+        phone: req.body.phone,
+      })
+      .then(async (lead) => {
+        await NewLead.query()
+          .insert({
+            lead_id: lead.id,
+            target_id: reklama.target_id,
+            edit_date: new Date(),
+            edit_time: new Date(),
+            reklama_id: reklama.id,
+          })
+          .then(async (newLead) => {
+            await LeadAction.query().insert({
+              lead_id: newLead.id,
+              to: 0,
+              do: 0,
             });
           });
       });
