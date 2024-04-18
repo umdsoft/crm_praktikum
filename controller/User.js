@@ -46,7 +46,7 @@ exports.register = async (req, res) => {
 
 exports.login = async (req, res) => {
   try {
-    console.log(req.body)
+    console.log(req.body);
     // const { error, value } = signUpValidator.validate(req.body);
     // if (error) {
     //   console.log(error);
@@ -141,7 +141,7 @@ exports.me = async (req, res) => {
     const user = await Users.query()
       .where("id", candidate.user_id)
       .first()
-      .select("name", "phone");
+      .select("name", "phone", "role");
     return res.status(200).json({ success: true, data: user });
   } catch (e) {
     console.log(e);

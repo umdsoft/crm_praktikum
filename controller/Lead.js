@@ -69,7 +69,7 @@ exports.createSite = async (req, res) => {
           target_id: reklama.target_id,
           edit_date: new Date(),
           edit_time: new Date(),
-          reklama_id: reklama.id
+          reklama_id: reklama.id,
         })
         .then(async (newLead) => {
           await LeadAction.query().insert({
@@ -155,7 +155,6 @@ exports.getByNew = async (req, res) => {
 
 exports.editAction = async (req, res) => {
   try {
-    console.log(req.params.id);
     NewLead.query()
       .findById(req.params.id)
       .update({
