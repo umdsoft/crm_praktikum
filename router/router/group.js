@@ -11,4 +11,7 @@ router.post("/start-group", authMiddleware, Group.startGroup);
 router.get("/get/:id", authMiddleware, Group.getOneCourseData);
 router.get("/service", authMiddleware, Group.getServices);
 router.get("/get-mentor", authMiddleware, Group.getAllMentor);
+router.get("/student-contract/:id", authMiddleware, Group.getGroupUserContractData);
+
+
 module.exports = router;

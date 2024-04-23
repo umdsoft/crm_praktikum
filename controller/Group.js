@@ -9,6 +9,8 @@ const GrupStudentPay = require("../models/GroupStudentPay");
 const SocialStatus = require("../models/SocialStatus");
 const Project = require("../models/Project");
 const User = require("../models/User");
+const sql = require("../setting/mDb");
+
 exports.create = async (req, res) => {
   try {
     const direction = await Direction.query()
@@ -74,28 +76,37 @@ exports.getAllGroup = async (req, res) => {
         time.name AS time ,
         (SELECT count(*) from group_student gs WHERE gs.group_id = g.id) as student_count
     FROM
-        groups g 
+        groups g
     LEFT JOIN
-        direction direc 
-            ON direc.id = g.direction_id 
+        direction direc
+            ON direc.id = g.direction_id
     LEFT JOIN
-        lesson_day day 
-            ON day.id = g.day 
+        lesson_day day
+            ON day.id = g.day
     LEFT JOIN
-        room rom 
-            ON rom.id = g.room_id 
+        room rom
+            ON rom.id = g.room_id
     LEFT JOIN
-        lesson_time time 
-            ON time.id = g.time 
+        lesson_time time
+            ON time.id = g.time
     ORDER BY g.status
     LIMIT ${limit} OFFSET ${skip};
         `);
     }
+
+    const groupsCount = await sql("groups").count("id as count").first();
+    // const groups = await sql("groups")
+    //   .select("groups.*","direction.name as direction", "room.name as room", )
+    //   .leftJoin("direction", "groups.direction_id", "direction.id")
+    //   .leftJoin("room", "groups.room_id", "room.id")
+    //   .limit(limit)
+    //   .offset(skip);
+
     return res.status(200).json({
       success: true,
-      data: allGroup[0],
-      total: allGroup[0].length,
       limit: limit,
+      total: groupsCount.count,
+      data: allGroup[0],
     });
   } catch (e) {
     console.log(e);
@@ -160,13 +171,24 @@ exports.startGroup = async (req, res) => {
 exports.getOneCourseData = async (req, res) => {
   try {
     const group = await Group.query().where("id", req.params.id).first();
-    const countGroupStudent = await GroupStudent.query().where("group_id", req.params.id).count("* as count");
-    const groupStudents = await GroupStudent.knex()
-      .raw(`SELECT gs.id,s.full_name, s.phone,gs.contract, p.name as project,gs.status,s.code
-    FROM group_student gs
-    LEFT JOIN student as s on gs.student_id = s.id
-    left join project as p on gs.project_id = p.id
-    WHERE gs.group_id = ${req.params.id};`);
+    const countGroupStudent = await GroupStudent.query()
+      .where("group_id", req.params.id)
+      .count("* as count");
+    // const groupStudents = await GroupStudent.knex()
+    //   .raw(`SELECT gs.id,s.full_name, s.phone,gs.contract, p.name as project,gs.status,s.code
+    // FROM group_student gs
+    // LEFT JOIN student as s on gs.student_id = s.id
+    // left join project as p on gs.project_id = p.id
+    // WHERE gs.group_id = ${req.params.id};`);
+
+    const groupStudents = await sql("group_student")
+      .select(
+        "student.id as student_id",
+        "student.code as student_code",
+        "student.*"
+      )
+      .leftJoin("student", "group_student.student_id", "student.id")
+      .where("group_student.group_id", req.params.id);
 
     const payment = await GrupStudentPay.knex().raw(`
     SELECT gsp.id, s.full_name,gsp.payment_date,gsp.amount, 
@@ -180,7 +202,7 @@ exports.getOneCourseData = async (req, res) => {
       success: true,
       group,
       countGroupStudent,
-      groupStudents: groupStudents[0],
+      groupStudents: groupStudents,
       payment: payment[0],
     });
   } catch (e) {
@@ -221,6 +243,82 @@ exports.getAllMentor = async (req, res) => {
   try {
     const mentor = await User.query().where("role", 8).select("id", "name");
     return res.status(200).json({ success: true, data: mentor });
+  } catch (e) {
+    console.log(e);
+  }
+};
+
+exports.getGroupUserContractData = async (req, res) => {
+  try {
+    const { student_id } = req.query;
+
+    if (!student_id) {
+      return res
+        .status(400)
+        .json({ success: false, message: "Student ID not found" });
+    }
+
+    const groupStudentPay = await sql("group_student_pay")
+      .select()
+      .where("student_id", student_id)
+      .where("group_id", req.params.id)
+      .first();
+
+    const groupStudentData = await sql("group_student")
+      .select(
+        "group_student.id as group_student_id",
+        "group_student.*",
+        "group_student.status as amount_status",
+        "groups.id as group_id",
+        "group_student.created as group_student_created",
+        "groups.created as group_created",
+        "groups.*",
+        "student.id as student_id",
+        "student.code as student_code",
+        "student.*"
+      )
+      .leftJoin("groups", "group_student.group_id", "groups.id")
+      .leftJoin("student", "group_student.student_id", "student.id")
+      .where("group_student.group_id", req.params.id)
+      .where("group_student.student_id", student_id)
+      .first();
+
+    if (!groupStudentData) {
+      return res
+        .status(400)
+        .json({ success: false, message: "Group Student not found" });
+    }
+    if (!groupStudentData.direction_id) {
+      return res
+        .status(400)
+        .json({ success: false, message: "Direction not found" });
+    }
+
+    const direction = await sql("direction")
+      .where("id", groupStudentData.direction_id)
+      .first();
+
+    const data = {
+      group_id: groupStudentData.group_id,
+      contract: groupStudentData.contract,
+      status: groupStudentData.status,
+      group_student_created: groupStudentData.group_student_created,
+      duration: groupStudentData.duration,
+      group_created: groupStudentData.group_created,
+      amount: groupStudentData.amount,
+      amount_status: groupStudentData.amount_status,
+      direction,
+      student: {
+        id: groupStudentData.student_id,
+        code: groupStudentData.student_code,
+        full_name: groupStudentData.full_name,
+        phone: groupStudentData.phone,
+        brightday: groupStudentData.brightday,
+      },
+      group_student_pay: groupStudentPay,
+    };
+
+    return res.status(200).json({ success: true, data });
   } catch (e) {
     console.log(e);
   }

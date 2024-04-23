@@ -7,6 +7,10 @@ const secret = require("../setting/setting").jwt;
 const Token = require("../models/Token");
 const GroupStudentPay = require("../models/GroupStudentPay");
 const { signUpValidator } = require("../helper/validator");
+const { generateRandomString } = require("../setting/randomString");
+const PayType = require("../models/PayType");
+const some = require("../setting/mDb");
+
 const updateTokens = (user_id) => {
   const accessToken = authHelper.generateAccessToken(user_id);
   const refreshToken = authHelper.generateRefreshToken();
@@ -17,6 +21,19 @@ const updateTokens = (user_id) => {
       accessToken,
       refreshToken: refreshToken.token,
     }));
+};
+
+const generateStatus = (status, payment_date, paid_date) => {
+  const date1 = new Date(payment_date);
+  const date2 = new Date();
+
+  if (status === 0) {
+    if (date1 < date2) {
+      return 3;
+    }
+  }
+
+  return status;
 };
 
 exports.createStudent = async (req, res) => {
@@ -142,11 +159,127 @@ exports.getMe = async (req, res) => {
 
 exports.getPayment = async (req, res) => {
   try {
-    const candidate = jwt.decode(req.headers.authorization.split(" ")[1]);
+    const limit = req.query.limit || 15;
+    const skip = (req.query.page - 1) * limit;
 
-    const user = await GroupStudentPay.query().where("student_id", 1);
+    const paymentsCount = await some("group_student_pay")
+      .count("id as count")
+      .first();
 
-    return res.status(200).json({ success: true, data: myArray });
+    const payments = await some("group_student_pay")
+      .select(
+        "group_student_pay.id as payment_id",
+        "group_student_pay.code as payment_code",
+        "group_student_pay.status as payment_status",
+        "group_student_pay.amount as pay_amount",
+        "group_student_pay.*",
+        "groups.id as group_id",
+        "groups.status as group_status",
+        "groups.amount as group_amount",
+        "groups.*",
+        "student.id as student_id",
+        "student.code as student_code",
+        "student.*",
+        "direction.id as direction_id",
+        "direction.name as direction_name",
+        "direction.code as direction_code"
+      )
+      .leftJoin("groups", "group_student_pay.group_id", "groups.id")
+      .leftJoin("student", "group_student_pay.student_id", "student.id")
+      .leftJoin("direction", "groups.direction_id", "direction.id")
+      .limit(limit)
+      .offset(skip);
+
+    // Transform the result to match the desired data structure
+    const formattedPayments = payments.map((payment) => ({
+      id: payment.payment_id,
+      status: generateStatus(
+        payment.payment_status,
+        payment.payment_date,
+        payment.paid_date
+      ),
+      payment_date: payment.payment_date,
+      paid_date: payment.paid_date,
+      paid_time: payment.paid_time,
+      gs_id: payment.gs_id,
+      pay_type: payment.pay_type,
+      amount: payment.pay_amount,
+      discount: payment.discount,
+      code: payment.payment_code,
+      student: {
+        id: payment.student_id,
+        full_name: payment.full_name,
+        code: payment.student_code,
+        phone: payment.phone,
+
+        // Include other student properties as needed
+        // Example: name: payment.student_name
+        // Assuming 'students' table has a 'student_name' column
+        // Adjust the properties based on your actual schema
+        // You can also omit properties you don't need
+      },
+      group: {
+        id: payment.group_id,
+        name: payment.direction_name,
+        // Include other group properties as needed
+        // Example: name: payment.group_name
+        // Assuming 'groups' table has a 'group_name' column
+        // Adjust the properties based on your actual schema
+        // You can also omit properties you don't need
+      },
+    }));
+
+    return res
+      .status(200)
+      .json({
+        success: true,
+        total: paymentsCount.count,
+        limit: limit,
+        data: formattedPayments,
+      });
+  } catch (e) {
+    console.log(e);
+    return res
+      .status(500)
+      .json({ success: false, error: "Internal server error" });
+  }
+};
+
+exports.getPay = async (req, res) => {
+  try {
+    const pay = await GroupStudentPay.query()
+      .where("id", req.params.id)
+      .first();
+    return res.status(200).json({ success: true, data: pay });
+  } catch (e) {
+    console.log(e);
+  }
+};
+
+exports.createPay = async (req, res) => {
+  try {
+    const currentDate = new Date();
+    const formattedTime = currentDate.toISOString().slice(11, 19);
+
+    await GroupStudentPay.query()
+      .where("id", req.params.id)
+      .update({
+        status: 1,
+        paid_time: formattedTime,
+        paid_date: req.body.date,
+        pay_type: req.body.pay_type,
+        code: generateRandomString(6),
+      });
+    return res.status(201).json({ success: true });
+  } catch (e) {
+    console.log(e);
+  }
+};
+
+exports.getPayType = async (req, res) => {
+  try {
+    const type = await PayType.query().select("*");
+    return res.status(200).json({ success: true, data: type });
   } catch (e) {
     console.log(e);
   }
