@@ -180,3 +180,34 @@ exports.editAction = async (req, res) => {
     console.log(e);
   }
 };
+
+
+exports.getInterested = async (req, res) => {
+  try { 
+    const interests = await LeadInterested.query().select("*").where("lead_id", req.params.lead_id);
+    return res.status(200).json({ success: true, interests });
+  } catch (error) {
+    console.log(error);
+}
+}
+
+exports.postInterested = async (req, res) => {
+  try {
+    const exist = await LeadInterested.query()
+      .where("interest", req.body.interest)
+      .first();
+
+      if (exist) {
+        return res.status(400).json({ success: false, msg: "exist" });
+      }
+
+    const interest = await LeadInterested.query().insert({
+      lead_id: req.body.lead_id,
+      interest: req.body.interest
+    });
+
+    return res.status(200).json({ success: true, interest });
+  } catch (error) {
+    console.log(error);
+  }
+};

@@ -5,7 +5,7 @@ Model.knex(knex)
 
 class LeadInterested extends Model {
 	static get tableName() {
-		return "lead_interested"
+		return "lead_interest"
 	}
 }
 

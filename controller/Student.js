@@ -90,7 +90,7 @@ exports.getAll = async (req, res) => {
       .orderBy("id", "desc")
       .limit(limit)
       .offset(skip);
-  } else {
+  } else { 
     allStudent = await Student.query()
       .select("*")
       .orderBy("id", "desc")
