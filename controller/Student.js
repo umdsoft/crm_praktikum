@@ -48,6 +48,14 @@ exports.createStudent = async (req, res) => {
     //generate password  for student
     const salt = await bcrypt.genSaltSync(12);
     const password = await bcrypt.hashSync(num, salt);
+
+    const student = await Student.query()
+      .where("phone", req.body.phone)
+      .first();
+    if (student) {
+      return res.status(400).json({ success: false, msg: "user-exist" });
+    }
+
     // create Student
     await Student.query().insert({
       code: num,
@@ -69,10 +77,15 @@ exports.getAll = async (req, res) => {
   const limit = req.query.limit || 15;
   const skip = (req.query.page - 1) * limit;
   let allStudent;
+
+  const studentsCount = await Student.query().count("id as count").first();
+
   if (req.query.search) {
-    console.log(req.query.search);
     allStudent = await Student.query()
-      .where("code", "like", `%${req.query.search}%`)
+    .where(function() {
+      this.where("code", "like", `%${req.query.search}%`)
+        .orWhere("phone", "like", `%${req.query.search}%`);
+    })
       .select("*")
       .orderBy("id", "desc")
       .limit(limit)
@@ -87,7 +100,7 @@ exports.getAll = async (req, res) => {
   return res.status(200).json({
     success: true,
     data: allStudent,
-    total: allStudent.length,
+    total: studentsCount.count,
     limit: limit,
   });
 };
@@ -229,14 +242,12 @@ exports.getPayment = async (req, res) => {
       },
     }));
 
-    return res
-      .status(200)
-      .json({
-        success: true,
-        total: paymentsCount.count,
-        limit: limit,
-        data: formattedPayments,
-      });
+    return res.status(200).json({
+      success: true,
+      total: paymentsCount.count,
+      limit: limit,
+      data: formattedPayments,
+    });
   } catch (e) {
     console.log(e);
     return res
@@ -280,6 +291,34 @@ exports.getPayType = async (req, res) => {
   try {
     const type = await PayType.query().select("*");
     return res.status(200).json({ success: true, data: type });
+  } catch (e) {
+    console.log(e);
+  }
+};
+
+exports.getStudentDetails = async (req, res) => {
+  try {
+    const student = await Student.query().where("id", req.params.id).first();
+    return res.status(200).json({ success: true, data: student });
+  } catch (e) {
+    console.log(e);
+  }
+};
+
+exports.editStudent = async (req, res) => {
+  try {
+    const student = await Student.query().where("id", req.params.id).first();
+    if (!student) {
+      return res.status(404).json({ success: false, msg: "student-not-found" });
+    }
+    await Student.query().where("id", req.params.id).update({
+      full_name: req.body.full_name,
+      phone: req.body.phone,
+      brightday: req.body.brightday,
+      gender: req.body.gender,
+    });
+
+    return res.status(200).json({ success: true });
   } catch (e) {
     console.log(e);
   }

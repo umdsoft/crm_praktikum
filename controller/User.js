@@ -46,7 +46,6 @@ exports.register = async (req, res) => {
 
 exports.login = async (req, res) => {
   try {
-    console.log(req.body);
     // const { error, value } = signUpValidator.validate(req.body);
     // if (error) {
     //   console.log(error);
