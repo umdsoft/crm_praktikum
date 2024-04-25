@@ -87,6 +87,7 @@ exports.getAll = async (req, res) => {
         .orWhere("phone", "like", `%${req.query.search}%`);
     })
       .select("*")
+      
       .orderBy("id", "desc")
       .limit(limit)
       .offset(skip);
