@@ -5,11 +5,13 @@ const Day = require("../models/Day");
 const Time = require("../models/Time");
 const Student = require("../models/Student");
 const GroupStudent = require("../models/GroupStudent");
-const GrupStudentPay = require("../models/GroupStudentPay");
+const GroupStudentPay = require("../models/GroupStudentPay");
 const SocialStatus = require("../models/SocialStatus");
 const Project = require("../models/Project");
-const User = require("../models/User");
+const Users = require("../models/User");
 const sql = require("../setting/mDb");
+const jwt = require("jsonwebtoken");
+const User = require("../models/User");
 
 exports.create = async (req, res) => {
   try {
@@ -49,69 +51,150 @@ exports.getDate = async (req, res) => {
     console.log(e);
   }
 };
+// let allGroup;
+// const knex = await Group.knex();
+// if (req.query.search) {
+//   allGroup = await Group.query()
+//     .where("code", "like", `%${req.query.search}%`)
+//     .select("*")
+//     .orderBy("id", "desc")
+//     .limit(limit)
+//     .offset(skip);
+// } else {
+//   allGroup = await knex.raw(`
+//     SELECT
+//     g.id AS id,
+//     g.code AS code,
+//     g.created AS created,
+//     g.status AS status,
+//     direc.name AS direction_name,
+//     day.name AS day,
+//     rom.name AS room,
+//     g.start_date,
+//     time.name AS time ,
+//     (SELECT count(*) from group_student gs WHERE gs.group_id = g.id) as student_count
+// FROM
+//     groups g
+// LEFT JOIN
+//     direction direc
+//         ON direc.id = g.direction_id
+// LEFT JOIN
+//     lesson_day day
+//         ON day.id = g.day
+// LEFT JOIN
+//     room rom
+//         ON rom.id = g.room_id
+// LEFT JOIN
+//     lesson_time time
+//         ON time.id = g.time
+// ORDER BY g.status
+// LIMIT ${limit} OFFSET ${skip};
+//     `);
+// }
+
+
 exports.getAllGroup = async (req, res) => {
   try {
     const limit = req.query.limit || 15;
-    const skip = (req.query.page - 1) * limit;
-    let allGroup;
-    const knex = await Group.knex();
-    if (req.query.search) {
-      allGroup = await Group.query()
-        .where("code", "like", `%${req.query.search}%`)
-        .select("*")
-        .orderBy("id", "desc")
-        .limit(limit)
-        .offset(skip);
-    } else {
-      allGroup = await knex.raw(`
-        SELECT
-        g.id AS id,
-        g.code AS code,
-        g.created AS created,
-        g.status AS status,
-        direc.name AS direction_name,
-        day.name AS day,
-        rom.name AS room,
-        g.start_date,
-        time.name AS time ,
-        (SELECT count(*) from group_student gs WHERE gs.group_id = g.id) as student_count
-    FROM
-        groups g
-    LEFT JOIN
-        direction direc
-            ON direc.id = g.direction_id
-    LEFT JOIN
-        lesson_day day
-            ON day.id = g.day
-    LEFT JOIN
-        room rom
-            ON rom.id = g.room_id
-    LEFT JOIN
-        lesson_time time
-            ON time.id = g.time
-    ORDER BY g.status
-    LIMIT ${limit} OFFSET ${skip};
-        `);
+    const page = req.query.page || 1;
+    const skip = (page - 1) * limit;
+    const candidate = jwt.decode(req.headers.authorization.split(" ")[1]);
+    const user = await Users.query().where("id", candidate.user_id).first().select("*");
+    
+    let groups = [];
+    let groupsCountQuery = sql("groups"); // Initialize the groups count query
+    
+    if (user.role === 8) {
+      groupsCountQuery = groupsCountQuery
+        .where(function() {
+          this.where("groups.main_mentor", user.id)
+            .orWhere("groups.second_mentor", user.id)
+            .orWhere("groups.english_mentor", user.id);
+        });
     }
 
-    const groupsCount = await sql("groups").count("id as count").first();
-    // const groups = await sql("groups")
-    //   .select("groups.*","direction.name as direction", "room.name as room", )
-    //   .leftJoin("direction", "groups.direction_id", "direction.id")
-    //   .leftJoin("room", "groups.room_id", "room.id")
-    //   .limit(limit)
-    //   .offset(skip);
+    // Add search by direction_name
+    const directionName = req.query.direction_name;
+    if (directionName) {
+      groupsCountQuery = groupsCountQuery
+        .leftJoin("direction", "groups.direction_id", "direction.id")
+        .where("direction.name", "like", `%${directionName}%`);
+    }
+
+    const groupsCount = await groupsCountQuery.count("id as count").first(); // Calculate the count based on the condition
+    
+    if (user.role === 8) {
+      groups = await sql("groups")
+        .select(
+          "groups.id as id",
+          "groups.created as created",
+          "groups.code as code",
+          "groups.status as status",
+          "groups.main_mentor as main_mentor_id",
+          "groups.second_mentor as second_mentor_id",
+          "groups.english_mentor as english_mentor_id",
+          "group_student.created as start_date",
+          sql.raw("COUNT(group_student.id) as student_count"), // Count the number of students for each group
+          "direction.name as direction_name",
+          "lesson_day.name as day",
+          "room.name as room",
+          "lesson_time.name as time"
+        )
+        .where(function() {
+          this.where("groups.main_mentor", user.id)
+            .orWhere("groups.second_mentor", user.id)
+            .orWhere("groups.english_mentor", user.id);
+        })
+        .leftJoin("direction", "groups.direction_id", "direction.id")
+        .leftJoin("group_student", "groups.id", "group_student.group_id") // Join on the group_id
+        .leftJoin("lesson_day", "groups.day", "lesson_day.id") // Join on the group_id
+        .leftJoin("room", "groups.room_id", "room.id")
+        .leftJoin("lesson_time", "groups.time", "lesson_time.id") 
+        .groupBy("groups.id") // Group by group id to get the count of students for each group
+        .limit(limit)
+        .offset(skip)
+        .orderBy("id", "desc");
+    } else {
+      groups = await sql("groups")
+        .select(
+          "groups.id as id",
+          "groups.created as created",
+          "groups.code as code",
+          "groups.status as status",
+          "groups.main_mentor as main_mentor_id",
+          "groups.second_mentor as second_mentor_id",
+          "groups.english_mentor as english_mentor_id",
+          "group_student.created as start_date",
+          sql.raw("COUNT(group_student.id) as student_count"), // Count the number of students for each group
+          "direction.name as direction_name",
+          "lesson_day.name as day",
+          "room.name as room",
+          "lesson_time.name as time"
+        )  
+        .leftJoin("direction", "groups.direction_id", "direction.id")
+        .leftJoin("group_student", "groups.id", "group_student.group_id") // Join on the group_id
+        .leftJoin("lesson_day", "groups.day", "lesson_day.id") // Join on the group_id
+        .leftJoin("room", "groups.room_id", "room.id")
+        .leftJoin("lesson_time", "groups.time", "lesson_time.id")
+        .groupBy("groups.id") // Group by group id to get the count of students for each group
+        .limit(limit)
+        .offset(skip)
+        .orderBy("id", "desc");
+    }
 
     return res.status(200).json({
       success: true,
       limit: limit,
       total: groupsCount.count,
-      data: allGroup[0],
+      data: groups,
     });
+    
   } catch (e) {
     console.log(e);
   }
 };
+
+
 
 exports.createGroupStudent = async (req, res) => {
   try {
@@ -140,34 +223,49 @@ exports.createGroupStudent = async (req, res) => {
 exports.startGroup = async (req, res) => {
   try {
     const group = await Group.query().where("id", req.body.group_id).first();
-    const groupUsers = await GroupStudent.query().orderBy("id", "desc");
+
+    if (!group) {
+      return res.status(400).json({ success: false, message: "Group not found" });
+    }
+
+    if (!group.duration) {
+      return res.status(400).json({ success: false, message: "duration-null" });
+    }
+
+    const groupUsers = await GroupStudent.query().where('group_id', group.id).orderBy("id", "desc");
+
     groupUsers.forEach(async (item) => {
       for (let i = 0; i < group.duration; i++) {
         const currentDate = new Date();
         currentDate.setDate(currentDate.getDate() + 5);
         currentDate.setMonth(currentDate.getMonth() + i);
-        await GrupStudentPay.query().insert({
+        await GroupStudentPay.query().insert({
           gs_id: item.id,
           amount: item.amount,
-          status: 0,
+          status: 0, 
           group_id: item.group_id,
           payment_date: currentDate,
-          student_id: item.student_id,
+          student_id: item.student_id, 
         });
       }
       await GroupStudent.query().where("id", item.id).update({ status: 1 });
     });
+
+
     await Group.query().where("id", req.body.group_id).update({
       status: 1,
       main_mentor: req.body.main_mentor,
       second_mentor: req.body.second_mentor,
       english_mentor: req.body.english_mentor,
+      start_date: req.body.start_date
     });
-    return res.status(200).json({ succes: true });
+    return res.status(200).json({ success: true });
   } catch (e) {
     console.log(e);
   }
 };
+
+
 exports.getOneCourseData = async (req, res) => {
   try {
     const group = await Group.query().where("id", req.params.id).first();
@@ -190,7 +288,7 @@ exports.getOneCourseData = async (req, res) => {
       .leftJoin("student", "group_student.student_id", "student.id")
       .where("group_student.group_id", req.params.id);
 
-    const payment = await GrupStudentPay.knex().raw(`
+    const payment = await GroupStudentPay.knex().raw(`
     SELECT gsp.id, s.full_name,gsp.payment_date,gsp.amount, 
     (SELECT SUM(ggsp.amount) as fulls_pay FROM group_student_pay ggsp where ggsp.gs_id = gsp.gs_id) as full_pay,
     (SELECT SUM(ggsp.amount) as qarzs FROM group_student_pay ggsp where ggsp.gs_id = gsp.gs_id and YEAR(ggsp.payment_date) <= YEAR(CURRENT_DATE()) and MONTH(ggsp.payment_date) <= MONTH(CURRENT_DATE())) as qarz

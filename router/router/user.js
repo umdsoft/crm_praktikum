@@ -17,5 +17,7 @@ router.get("/me", authMiddleware, UserController.me);
 // admin
 router.get("/get-all", authMiddleware, UserController.getAllUsers);
 router.get("/get-role", authMiddleware, UserController.getRole);
+router.post("/change-password", authMiddleware, role("admin"), UserController.changePassword);
+
 
 module.exports = router;

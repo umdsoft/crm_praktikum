@@ -113,25 +113,47 @@ exports.getAllUsers = async (req, res) => {
 };
 
 exports.editUser = async (req, res) => {
-  const candidate = jwt.decode(req.headers.bearer);
-  let password;
-  if (req.body.password != null) {
-    const salt = await bcrypt.genSaltSync(12);
-    password = await bcrypt.hashSync(req.body.password, salt);
-  } else {
-    password = candidate.password;
-  }
-  await Users.query()
-    .where("id", candidate.user_id)
-    .update({
-      password: password,
-      email: req.body.email,
+  try {
+    const candidate = jwt.decode(req.headers.authorization.split(" ")[1]);
+
+    const userPhoneExist = await Users.query().where("phone", req.body.phone).first();
+    if (userPhoneExist) {
+      return res.status(400).json({ success: false, msg: "user-yes" });
+    }
+
+    const user = await Users.query().where("id", candidate.user_id).update({
       phone: req.body.phone,
       name: req.body.name,
-    })
-    .then(() => {
-      return res.status(200).json({ success: true });
     });
+    
+    if (!user) {
+      return res.status(404).json({ success: false, msg: "user-not-found" });
+    }
+
+
+    return res.status(200).json({ success: true });
+  } catch (error) {
+    console.log(error);
+  }
+
+  // let password;
+  // if (req.body.password != null) {
+  //   const salt = await bcrypt.genSaltSync(12);
+  //   password = await bcrypt.hashSync(req.body.password, salt);
+  // } else {
+  //   password = candidate.password;
+  // }
+  // await Users.query()
+  //   .where("id", candidate.user_id)
+  //   .update({
+  //     password: password,
+  //     email: req.body.email,
+  //     phone: req.body.phone,
+  //     name: req.body.name,
+  //   })
+  //   .then(() => {
+  //     return res.status(200).json({ success: true });
+  //   });
 };
 
 exports.me = async (req, res) => {
@@ -144,5 +166,32 @@ exports.me = async (req, res) => {
     return res.status(200).json({ success: true, data: user });
   } catch (e) {
     console.log(e);
+  }
+};
+
+exports.changePassword = async (req, res) => {
+  try {
+    const candidate = jwt.decode(req.headers.authorization.split(" ")[1]);
+    const salt = await bcrypt.genSaltSync(12);
+    const user = await Users.query().where("id", candidate.user_id).first();
+
+    const comparePassword = await bcrypt.compare(
+      req.body.password,
+      user.password
+    );
+    if (!comparePassword) {
+      return res
+        .status(400)
+        .json({ success: false, msg: "password-not-match" });
+    }
+
+    const password = await bcrypt.hashSync(req.body.new_password, salt);
+    await Users.query().where("id", candidate.user_id).update({
+      password: password,
+    });
+
+    return res.status(200).json({ success: true });
+  } catch (error) {
+    console.log(error);
   }
 };

@@ -123,9 +123,8 @@ exports.getById = async (req, res) => {
       .where("lead_id", lead.id)
       .orderBy("id", "desc")
       .first();
-    console.log(newLead);
 
-    return res.status(200).json({ success: true, lead, newLead: newLead.id });
+    return res.status(200).json({ success: true, lead, newLead: newLead.id, action: newLead.action });
   } catch (e) {
     return res.status(400).json({ success: false, msg: e });
   }
@@ -211,3 +210,15 @@ exports.postInterested = async (req, res) => {
     console.log(error);
   }
 };
+
+
+
+exports.editLead = async (req, res) => {
+  try {
+    const lead = await Lead.query().findById(req.params.id);
+    await lead.$query().update(req.body);
+    return res.status(200).json({ success: true });
+  } catch (e) {
+    console.log(e);
+  }
+}
