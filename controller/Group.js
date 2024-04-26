@@ -133,7 +133,7 @@ exports.getAllGroup = async (req, res) => {
           "groups.main_mentor as main_mentor_id",
           "groups.second_mentor as second_mentor_id",
           "groups.english_mentor as english_mentor_id",
-          "group_student.created as start_date",
+          "groups.start_date as start_date",
           sql.raw("COUNT(group_student.id) as student_count"), // Count the number of students for each group
           "direction.name as direction_name",
           "lesson_day.name as day",
@@ -164,7 +164,7 @@ exports.getAllGroup = async (req, res) => {
           "groups.main_mentor as main_mentor_id",
           "groups.second_mentor as second_mentor_id",
           "groups.english_mentor as english_mentor_id",
-          "group_student.created as start_date",
+          "groups.start_date as start_date",
           sql.raw("COUNT(group_student.id) as student_count"), // Count the number of students for each group
           "direction.name as direction_name",
           "lesson_day.name as day",
