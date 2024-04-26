@@ -223,6 +223,7 @@ exports.createGroupStudent = async (req, res) => {
 exports.startGroup = async (req, res) => {
   try {
     const group = await Group.query().where("id", req.body.group_id).first();
+    const startDate = new Date(req.body.start_date);
 
     if (!group) {
       return res.status(400).json({ success: false, message: "Group not found" });
@@ -245,7 +246,7 @@ exports.startGroup = async (req, res) => {
           status: 0, 
           group_id: item.group_id,
           payment_date: currentDate,
-          student_id: item.student_id, 
+          student_id: item.student_id,  
         });
       }
       await GroupStudent.query().where("id", item.id).update({ status: 1 });
@@ -257,7 +258,7 @@ exports.startGroup = async (req, res) => {
       main_mentor: req.body.main_mentor,
       second_mentor: req.body.second_mentor,
       english_mentor: req.body.english_mentor,
-      start_date: req.body.start_date
+      start_date: startDate
     });
     return res.status(200).json({ success: true });
   } catch (e) {
