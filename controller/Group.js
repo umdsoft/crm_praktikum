@@ -93,30 +93,30 @@ exports.getDate = async (req, res) => {
 //     `);
 // }
 
-
 exports.getAllGroup = async (req, res) => {
   try {
     const limit = req.query.limit || 15;
     const page = req.query.page || 1;
     const skip = (page - 1) * limit;
     const candidate = jwt.decode(req.headers.authorization.split(" ")[1]);
-    const user = await Users.query().where("id", candidate.user_id).first().select("*");
-    
+    const user = await Users.query()
+      .where("id", candidate.user_id)
+      .first()
+      .select("*");
+
     let groups = [];
     let groupsCountQuery = sql("groups"); // Initialize the groups count query
-    
+
     if (user.role === 8) {
-      groupsCountQuery = groupsCountQuery
-        .where(function() {
-          this.where("groups.main_mentor", user.id)
-            .orWhere("groups.second_mentor", user.id)
-            .orWhere("groups.english_mentor", user.id);
-        });
+      groupsCountQuery = groupsCountQuery.where(function () {
+        this.where("groups.main_mentor", user.id)
+          .orWhere("groups.second_mentor", user.id)
+          .orWhere("groups.english_mentor", user.id);
+      });
     }
- 
 
     const groupsCount = await groupsCountQuery.count("id as count").first(); // Calculate the count based on the condition
-    
+
     if (user.role === 8) {
       groups = await sql("groups")
         .select(
@@ -134,18 +134,26 @@ exports.getAllGroup = async (req, res) => {
           "room.name as room",
           "lesson_time.name as time"
         )
-        .where(function() {
+        .where(function () {
           this.where("groups.main_mentor", user.id)
             .orWhere("groups.second_mentor", user.id)
             .orWhere("groups.english_mentor", user.id)
-            .orWhere("direction.name", "like", `%${req.query.search?.toLowerCase()}%`)
-            .orWhere("groups.code", "like", `%${req.query.search?.toLowerCase()}%`)
+            .orWhere(
+              "direction.name",
+              "like",
+              `%${req.query.search?.toLowerCase()}%`
+            )
+            .orWhere(
+              "groups.code",
+              "like",
+              `%${req.query.search?.toLowerCase()}%`
+            );
         })
         .leftJoin("direction", "groups.direction_id", "direction.id")
         .leftJoin("group_student", "groups.id", "group_student.group_id") // Join on the group_id
         .leftJoin("lesson_day", "groups.day", "lesson_day.id") // Join on the group_id
         .leftJoin("room", "groups.room_id", "room.id")
-        .leftJoin("lesson_time", "groups.time", "lesson_time.id") 
+        .leftJoin("lesson_time", "groups.time", "lesson_time.id")
         .groupBy("groups.id") // Group by group id to get the count of students for each group
         .limit(limit)
         .offset(skip)
@@ -166,9 +174,17 @@ exports.getAllGroup = async (req, res) => {
           "lesson_day.name as day",
           "room.name as room",
           "lesson_time.name as time"
-        ).where(function() {
-          this.where("direction.name", "like", `%${req.query.search?.toLowerCase()}%`)
-          .orWhere("groups.code", "like", `%${req.query.search?.toLowerCase()}%`)
+        )
+        .where(function () {
+          this.where(
+            "direction.name",
+            "like",
+            `%${req.query.search?.toLowerCase()}%`
+          ).orWhere(
+            "groups.code",
+            "like",
+            `%${req.query.search?.toLowerCase()}%`
+          );
         })
         .leftJoin("direction", "groups.direction_id", "direction.id")
         .leftJoin("group_student", "groups.id", "group_student.group_id") // Join on the group_id
@@ -187,14 +203,10 @@ exports.getAllGroup = async (req, res) => {
       total: groupsCount.count,
       data: groups,
     });
-    
   } catch (e) {
     console.log(e);
   }
 };
-
-
-
 
 exports.createGroupStudent = async (req, res) => {
   try {
@@ -226,46 +238,48 @@ exports.startGroup = async (req, res) => {
     const startDate = new Date(req.body.start_date);
 
     if (!group) {
-      return res.status(400).json({ success: false, message: "Group not found" });
+      return res
+        .status(400)
+        .json({ success: false, message: "Group not found" });
     }
 
     if (!group.duration) {
       return res.status(400).json({ success: false, message: "duration-null" });
     }
 
-    const groupUsers = await GroupStudent.query().where('group_id', group.id).orderBy("id", "desc");
+    const groupUsers = await GroupStudent.query()
+      .where("group_id", group.id)
+      .orderBy("id", "desc");
 
     groupUsers.forEach(async (item) => {
       for (let i = 0; i < group.duration; i++) {
-        const currentDate = new Date();
+        const currentDate = new Date(group.start_date);
         currentDate.setDate(currentDate.getDate() + 5);
         currentDate.setMonth(currentDate.getMonth() + i);
         await GroupStudentPay.query().insert({
           gs_id: item.id,
           amount: item.amount,
-          status: 0, 
+          status: 0,
           group_id: item.group_id,
           payment_date: currentDate,
-          student_id: item.student_id,  
+          student_id: item.student_id,
         });
       }
       await GroupStudent.query().where("id", item.id).update({ status: 1 });
     });
-
 
     await Group.query().where("id", req.body.group_id).update({
       status: 1,
       main_mentor: req.body.main_mentor,
       second_mentor: req.body.second_mentor,
       english_mentor: req.body.english_mentor,
-      start_date: startDate
+      start_date: startDate,
     });
     return res.status(200).json({ success: true });
   } catch (e) {
     console.log(e);
   }
 };
-
 
 exports.getOneCourseData = async (req, res) => {
   try {
@@ -423,9 +437,6 @@ exports.getGroupUserContractData = async (req, res) => {
   }
 };
 
-
-
-
 exports.getGroupStudents = async (req, res) => {
   try {
     const groupStudents = await sql("group_student")
@@ -439,52 +450,52 @@ exports.getGroupStudents = async (req, res) => {
         "student.*"
       )
       .leftJoin("student", "group_student.student_id", "student.id")
-      .where("group_student.group_id", req.params.id).orderBy("group_student_id", "desc")
+      .where("group_student.group_id", req.params.id)
+      .orderBy("group_student_id", "desc");
 
     return res.status(200).json({ success: true, data: groupStudents });
   } catch (e) {
     console.log(e);
   }
-}
+};
 
 exports.postCheckStudent = async (req, res) => {
   try {
-      const { group_id, data } = req.body
-      
-      if (!group_id) {
-          return res.status(400).json({ success: false, message: "Group ID not found" });
+    const { group_id, data } = req.body;
+
+    if (!group_id) {
+      return res
+        .status(400)
+        .json({ success: false, message: "Group ID not found" });
+    }
+
+    if (!data) {
+      return res
+        .status(400)
+        .json({ success: false, message: "Data not found" });
+    }
+
+    data.forEach(async (item) => {
+      try {
+        await StudentCheck.query().insert({
+          student_id: item.id,
+          group_id: group_id,
+          status: item.isCheck ? 1 : 0,
+          reason: item.reason,
+          created: new Date(),
+          gs_id: null,
+          gl_id: null,
+        });
+      } catch (error) {
+        console.log(error);
       }
+    });
 
-      if (!data) {
-          return res.status(400).json({ success: false, message: "Data not found" }); 
-
-      }
-
-      data.forEach(async(item) => {
-        try {
-          await StudentCheck.query().insert({ 
-            student_id: item.id,
-            group_id: group_id,
-            status: item.isCheck ? 1 : 0 ,
-            reason: item.reason,
-            created: new Date(),
-            gs_id: null,
-            gl_id: null
-           });
-        } catch (error) {
-          console.log(error);
-        }
-      })
-
-
-      
-    return res.status(200).json({ success: true }); 
+    return res.status(200).json({ success: true });
   } catch (e) {
     console.log(e);
   }
 };
-
-
 
 exports.getCheckUpGroup = async (req, res) => {
   try {
@@ -493,29 +504,32 @@ exports.getCheckUpGroup = async (req, res) => {
         "group_student_checkup.*",
         "student.id as student_id",
         "student.code as student_code",
-        "student.full_name as student_full_name",
+        "student.full_name as student_full_name"
       )
       .leftJoin("student", "group_student_checkup.student_id", "student.id")
       .where("group_id", req.params.id);
 
     const groupedCheckup = {};
-    checkup.forEach(check => {
-      const createdDate = check.created.toISOString().split('T')[0];
+    checkup.forEach((check) => {
+      const createdDate = check.created.toISOString().split("T")[0];
       if (!groupedCheckup[createdDate]) {
         groupedCheckup[createdDate] = [];
       }
       groupedCheckup[createdDate].push(check);
     });
 
-    const groupedCheckupArray = Object.entries(groupedCheckup).map(([created, data]) => ({
-      created,
-      data,
-    }));
+    const groupedCheckupArray = Object.entries(groupedCheckup).map(
+      ([created, data]) => ({
+        created,
+        data,
+      })
+    );
 
     return res.status(200).json({ success: true, data: groupedCheckupArray });
-
   } catch (e) {
     console.log(e);
-    return res.status(500).json({ success: false, error: "Internal server error" });
+    return res
+      .status(500)
+      .json({ success: false, error: "Internal server error" });
   }
 };
