@@ -206,7 +206,7 @@ exports.getPayment = async (req, res) => {
       .leftJoin("direction", "groups.direction_id", "direction.id")
       .limit(limit)
       .offset(skip)
-      .orderBy("status", "desc");
+      .orderBy("payment_status", "desc");
 
     // Transform the result to match the desired data structure
     const formattedPayments = payments.map((payment) => ({
