@@ -56,6 +56,61 @@ exports.create = async (req, res) => {
     return console.log(e);
   }
 };
+exports.register = async (req, res) => {
+  try {
+    console.log(req.body)
+    const old_lead = await Lead.query().where("phone", req.body.phone).first();
+    let ads = await Reklama.query().where("utm_id", req.body.target).first();
+    if (!ads) {
+      ads.target_id = null;
+      ads.reklama_id = null;
+    }
+    if (old_lead) {
+      await NewLead.query()
+        .insert({
+          lead_id: old_lead.id,
+          target_id: ads.target_id,
+          reklama_id: ads.id,
+          edit_date: new Date(),
+          edit_time: new Date(),
+        })
+        .then(async (newLead) => {
+          await LeadAction.query().insert({
+            lead_id: newLead.id,
+            to: 0,
+            do: 0,
+          });
+        });
+      return res.status(200).json({ success: true });
+    }
+    await Lead.query()
+      .insert({
+        name: req.body.name,
+        phone: req.body.phone,
+      })
+      .then(async (lead) => {
+        await NewLead.query()
+          .insert({
+            lead_id: lead.id,
+            target_id: ads.target_id,
+            reklama_id: ads.id,
+            edit_date: new Date(),
+            edit_time: new Date(),
+          })
+          .then(async (newLead) => {
+            await LeadAction.query().insert({
+              lead_id: newLead.id,
+              to: 0,
+              do: 0,
+            });
+          });
+      });
+
+    return res.status(200).json({ success: true });
+  } catch (e) {
+    return console.log(e);
+  }
+};
 exports.createSite = async (req, res) => {
   try {
     const reklama = await Reklama.query()
@@ -124,7 +179,12 @@ exports.getById = async (req, res) => {
       .orderBy("id", "desc")
       .first();
 
-    return res.status(200).json({ success: true, lead, newLead: newLead.id, action: newLead.action });
+    return res.status(200).json({
+      success: true,
+      lead,
+      newLead: newLead.id,
+      action: newLead.action,
+    });
   } catch (e) {
     return res.status(400).json({ success: false, msg: e });
   }
@@ -180,15 +240,16 @@ exports.editAction = async (req, res) => {
   }
 };
 
-
 exports.getInterested = async (req, res) => {
-  try { 
-    const interests = await LeadInterested.query().select("*").where("lead_id", req.params.lead_id);
+  try {
+    const interests = await LeadInterested.query()
+      .select("*")
+      .where("lead_id", req.params.lead_id);
     return res.status(200).json({ success: true, interests });
   } catch (error) {
     console.log(error);
-}
-}
+  }
+};
 
 exports.postInterested = async (req, res) => {
   try {
@@ -196,13 +257,13 @@ exports.postInterested = async (req, res) => {
       .where("interest", req.body.interest)
       .first();
 
-      if (exist) {
-        return res.status(400).json({ success: false, msg: "exist" });
-      }
+    if (exist) {
+      return res.status(400).json({ success: false, msg: "exist" });
+    }
 
     const interest = await LeadInterested.query().insert({
       lead_id: req.body.lead_id,
-      interest: req.body.interest
+      interest: req.body.interest,
     });
 
     return res.status(200).json({ success: true, interest });
@@ -210,8 +271,6 @@ exports.postInterested = async (req, res) => {
     console.log(error);
   }
 };
-
-
 
 exports.editLead = async (req, res) => {
   try {
@@ -221,4 +280,4 @@ exports.editLead = async (req, res) => {
   } catch (e) {
     console.log(e);
   }
-}
+};

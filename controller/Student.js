@@ -82,16 +82,19 @@ exports.getAll = async (req, res) => {
 
   if (req.query.search) {
     allStudent = await Student.query()
-    .where(function() {
-      this.where("code", "like", `%${req.query.search}%`)
-        .orWhere("phone", "like", `%${req.query.search}%`);
-    })
+      .where(function () {
+        this.where("code", "like", `%${req.query.search}%`).orWhere(
+          "phone",
+          "like",
+          `%${req.query.search}%`
+        );
+      })
       .select("*")
-      
+
       .orderBy("id", "desc")
       .limit(limit)
       .offset(skip);
-  } else { 
+  } else {
     allStudent = await Student.query()
       .select("*")
       .orderBy("id", "desc")
@@ -202,7 +205,8 @@ exports.getPayment = async (req, res) => {
       .leftJoin("student", "group_student_pay.student_id", "student.id")
       .leftJoin("direction", "groups.direction_id", "direction.id")
       .limit(limit)
-      .offset(skip);
+      .offset(skip)
+      .orderBy("status", "desc");
 
     // Transform the result to match the desired data structure
     const formattedPayments = payments.map((payment) => ({
@@ -225,21 +229,10 @@ exports.getPayment = async (req, res) => {
         full_name: payment.full_name,
         code: payment.student_code,
         phone: payment.phone,
-
-        // Include other student properties as needed
-        // Example: name: payment.student_name
-        // Assuming 'students' table has a 'student_name' column
-        // Adjust the properties based on your actual schema
-        // You can also omit properties you don't need
       },
       group: {
         id: payment.group_id,
         name: payment.direction_name,
-        // Include other group properties as needed
-        // Example: name: payment.group_name
-        // Assuming 'groups' table has a 'group_name' column
-        // Adjust the properties based on your actual schema
-        // You can also omit properties you don't need
       },
     }));
 

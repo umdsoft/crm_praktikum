@@ -1,5 +1,6 @@
 const Lesson = require("../models/Lesson");
 const LessonModule = require("../models/LessonModule");
+
 exports.createLesson = async (req, res) => {
   try {
     await Lesson.query().insert({
@@ -14,6 +15,7 @@ exports.createLesson = async (req, res) => {
     console.log(e);
   }
 };
+
 exports.createLessonModule = async (req, res) => {
   try {
     await LessonModule.query().insert({
@@ -27,9 +29,14 @@ exports.createLessonModule = async (req, res) => {
 };
 exports.getAllLesson = async (req, res) => {
   try {
+    const page = req.query.page || 1;
     const limit = req.query.limit || 15;
-    const skip = (req.query.page - 1) * limit;
+    const skip = (page - 1) * limit;
     const knex = await Lesson.knex();
+
+    const allLessonsCount = await knex.raw(
+      `SELECT count(*) as total FROM lesson`
+    );
 
     const allCourse = await knex.raw(`
     SELECT l.id AS id,
@@ -49,6 +56,7 @@ ORDER BY l.id DESC;
       success: true,
       data: allCourse[0],
       total: allCourse[0].length,
+      total: allLessonsCount[0][0].total, 
       limit: limit,
     });
   } catch (e) {
@@ -69,8 +77,9 @@ exports.getAllLessonModule = async (req, res) => {
     les.name AS course
 FROM lesson_module AS lm
 LEFT JOIN lesson les ON les.id = lm.lesson_id
-WHERE lm.lesson_id = ${req.query.course}
-ORDER BY lm.id ASC;
+WHERE lm.lesson_id = ${req.params.id}
+ORDER BY lm.id ASC
+LIMIT ${limit} OFFSET ${skip};
       `);
 
     return res.status(200).json({
