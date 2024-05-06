@@ -14,4 +14,7 @@ router.put("/edit-lead/:id", authMiddleware, Lead.editLead);
 router.post("/interest/", authMiddleware, Lead.postInterested);
 router.get("/interest/:lead_id", authMiddleware, Lead.getInterested);
 
+router.get("/get-tasks", authMiddleware, Lead.getTasksLead);
+router.post("/create-task", authMiddleware, Lead.createTaskLead);
+
 module.exports = router;

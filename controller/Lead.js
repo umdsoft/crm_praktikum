@@ -5,6 +5,7 @@ const NewLead = require("../models/NewLead");
 const LeadAction = require("../models/lead_action");
 const jwt = require("jsonwebtoken");
 const Reklama = require("../models/reklama");
+const LeadTask = require("../models/lead_task");
 
 exports.create = async (req, res) => {
   try {
@@ -281,3 +282,28 @@ exports.editLead = async (req, res) => {
     console.log(e);
   }
 };
+
+
+exports.createTaskLead = async (req, res) => {
+  try {
+    const candidate = jwt.decode(req.headers.authorization.split(" ")[1]); 
+
+    await LeadTask.query().insert({
+      lead_id: req.body.lead_id,
+      task: req.body.task
+    }); 
+
+    return res.status(200).json({ success: true });
+  } catch (error) {
+    console.log(error)
+  }
+}
+
+exports.getTasksLead = async (req, res) => {
+  try {
+    const tasks = await LeadTask.query().where("lead_id", req.params.lead_id);
+    return res.status(200).json({ success: true, tasks });
+  } catch (error) {
+    console.log(error)
+  }
+}
