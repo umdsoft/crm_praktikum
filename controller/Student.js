@@ -178,12 +178,13 @@ exports.getPayment = async (req, res) => {
   try {
     const limit = req.query.limit || 15;
     const skip = (req.query.page - 1) * limit;
+    const searchTerm = req.query.search
 
     const paymentsCount = await some("group_student_pay")
       .count("id as count")
       .first();
 
-    const payments = await some("group_student_pay")
+      const payments = await some("group_student_pay")
       .select(
         "group_student_pay.id as payment_id",
         "group_student_pay.code as payment_code",
@@ -204,9 +205,18 @@ exports.getPayment = async (req, res) => {
       .leftJoin("groups", "group_student_pay.group_id", "groups.id")
       .leftJoin("student", "group_student_pay.student_id", "student.id")
       .leftJoin("direction", "groups.direction_id", "direction.id")
+      .where(function() {
+        if (searchTerm) {
+          this.where()
+            .orWhere("student.code", "like", `%${searchTerm}%`)
+            .orWhere("student.phone", "like", `%${searchTerm}%`)
+            .orWhere("direction.name", "like", `%${searchTerm}%`);
+        }
+      })
       .limit(limit)
       .offset(skip)
       .orderBy("payment_status", "asc");
+    
 
     // Transform the result to match the desired data structure
     const formattedPayments = payments.map((payment) => ({
@@ -317,3 +327,14 @@ exports.editStudent = async (req, res) => {
     console.log(e);
   }
 };
+
+
+exports.getStudentByCode = async(req, res) => {
+  try {
+    const student = await Student.query().where("code", req.params.code).first()
+
+    return res.status(200).json({ success: true, data: student })
+  } catch (error) { 
+    console.log(error)
+  }
+}
