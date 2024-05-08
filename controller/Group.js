@@ -222,23 +222,23 @@ exports.createGroupStudent = async (req, res) => {
     const idsss = lastDate ? [`${lastDate.id + 1}`] : [1]
     const contract_number = `${group.code}/${idsss}`
 
-    
+
 
     if (group.status === 1) {
-     
 
 
-    let repush = []
 
-    const start_month = new Date(group.start_date)
-    const now_month = new Date(req.body.join_date)
+      let repush = []
 
-    if (now_month < start_month) {
-      return res.status(400).json({ success: false, msg: "join", text: `${group.start_date}` })
-    }
-    
+      const start_month = new Date(group.start_date)
+      const now_month = new Date(req.body.join_date)
 
-    const rezonans = now_month.getMonth() - start_month.getMonth()
+      if (now_month < start_month) {
+        return res.status(400).json({ success: false, msg: "join", text: `${group.start_date}` })
+      }
+
+
+      const rezonans = now_month.getMonth() - start_month.getMonth()
 
       for (let i = 0; i < group.duration - rezonans; i++) {
         repush.push(i)
@@ -254,31 +254,31 @@ exports.createGroupStudent = async (req, res) => {
       })
 
       repush.forEach(async (item) => {
-      const currentDate = new Date(req.body.join_date)
-      currentDate.setDate(currentDate.getDate() + 5)
-      currentDate.setMonth(currentDate.getMonth() + item)
+        const currentDate = new Date(req.body.join_date)
+        currentDate.setDate(currentDate.getDate() + 5)
+        currentDate.setMonth(currentDate.getMonth() + item)
 
-      await GroupStudentPay.query().insert({
-        gs_id: gs.id,
-        amount: req.body.amount,
-        status: 0,
-        group_id: group.id,
-        payment_date: currentDate,
-        student_id: gs.student_id
+        await GroupStudentPay.query().insert({
+          gs_id: gs.id,
+          amount: req.body.amount,
+          status: 0,
+          group_id: group.id,
+          payment_date: currentDate,
+          student_id: gs.student_id
+        })
       })
-    })
 
-  } else if (group.status === 0) {
-    const gs = await GroupStudent.query().insert({
-      student_id: req.body.student_id,
-      group_id: req.body.group_id,
-      contract: contract_number,
-      status: 0,
-      project_id: req.body.project_id,
-      amount: req.body.amount,
-      social_status_id: req.body.social_status_id
-    })
-  }
+    } else if (group.status === 0) {
+      const gs = await GroupStudent.query().insert({
+        student_id: req.body.student_id,
+        group_id: req.body.group_id,
+        contract: contract_number,
+        status: 0,
+        project_id: req.body.project_id,
+        amount: req.body.amount,
+        social_status_id: req.body.social_status_id
+      })
+    }
 
     return res.status(201).json({ success: true });
   } catch (e) {
@@ -420,7 +420,7 @@ exports.checkStudent = async (req, res) => {
   } catch (e) {
     console.log(e);
   }
-}; 
+};
 
 
 
@@ -608,3 +608,68 @@ exports.getCheckUpGroup = async (req, res) => {
       .json({ success: false, error: "Internal server error" });
   }
 };
+
+
+
+
+exports.getGroupStudentsPays = async (req, res) => {
+  try {
+    const { group_id } = req.params; // 0, 1, 2, 3, ...
+    const { month } = req.query;
+
+    if (!group_id) return res.status(400).json({ success: false, msg: "group_id invalid" })
+
+    const group = await Group.query().select("*").where("id", group_id).first()
+    if (!group) return res.status(400).json({ success: false, msg: "Not found group!" })
+    
+    let months = []
+    const cd = new Date()
+    
+    for (let i = 0; i < group.duration; i++) {
+      const currentDate = new Date(group.start_date)
+      currentDate.setMonth(currentDate.getMonth() + i)
+      months.push(currentDate.getMonth() + 1)
+    }
+
+    months.sort((a, b) => { 
+        if (a < b) {
+            return -1;
+        }
+        if (a > b) {
+            return 1; 
+        }
+        return 0;
+    })
+
+    const currentMonth = month || months[0]
+
+    const payment = await GroupStudentPay.knex().raw(`
+      SELECT gsp.*, s.full_name, s.phone, gsp.code AS gsp_code, s.code AS student_code
+      FROM group_student_pay AS gsp
+      INNER JOIN student AS s ON gsp.student_id = s.id
+      WHERE gsp.group_id = ${group_id} AND MONTH(gsp.payment_date) = ${currentMonth};
+    `);
+
+    res.status(200).json({ success: true, current: cd.getMonth() + 1, months, data: payment[0] });
+  } catch (error) {
+    console.log(error);
+    res.status(500).json({ success: false, error: "Internal Server Error" });
+  }
+};
+
+
+
+exports.getGroupDetails = async(req, res) => {
+  try {
+    const { id } = req.params
+
+    if (isNaN(id)) return res.status(400).json({ success: false, message: "Invalid ID!" })
+
+    const group = await Group.query().select("*").where("id", id).first()
+
+    return res.status(200).json({ success: true, data: group })
+
+  } catch (error) {
+    console.log(error);
+  }
+}

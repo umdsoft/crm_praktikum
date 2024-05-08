@@ -184,7 +184,10 @@ exports.getPayment = async (req, res) => {
       .count("id as count")
       .first();
 
-      const payments = await some("group_student_pay")
+      let payments;
+
+      if (searchTerm) {
+        payments = await some("group_student_pay")
       .select(
         "group_student_pay.id as payment_id",
         "group_student_pay.code as payment_code",
@@ -198,24 +201,45 @@ exports.getPayment = async (req, res) => {
         "student.id as student_id",
         "student.code as student_code",
         "student.*",
-        "direction.id as direction_id",
+        "direction.id as direction_id", 
         "direction.name as direction_name",
         "direction.code as direction_code"
       )
       .leftJoin("groups", "group_student_pay.group_id", "groups.id")
       .leftJoin("student", "group_student_pay.student_id", "student.id")
       .leftJoin("direction", "groups.direction_id", "direction.id")
-      .where(function() {
-        if (searchTerm) {
-          this.where()
-            .orWhere("student.code", "like", `%${searchTerm}%`)
-            .orWhere("student.phone", "like", `%${searchTerm}%`)
-            .orWhere("direction.name", "like", `%${searchTerm}%`);
-        }
+      .where(function () {
+        this.where("full_name", "like", `%${searchTerm}%`)
       })
       .limit(limit)
       .offset(skip)
       .orderBy("payment_status", "asc");
+      } else {
+       payments = await some("group_student_pay")
+      .select(
+        "group_student_pay.id as payment_id",
+        "group_student_pay.code as payment_code",
+        "group_student_pay.status as payment_status",
+        "group_student_pay.amount as pay_amount",
+        "group_student_pay.*",
+        "groups.id as group_id",
+        "groups.status as group_status",
+        "groups.amount as group_amount",
+        "groups.*",
+        "student.id as student_id",
+        "student.code as student_code",
+        "student.*",
+        "direction.id as direction_id", 
+        "direction.name as direction_name",
+        "direction.code as direction_code"
+      )
+      .leftJoin("groups", "group_student_pay.group_id", "groups.id")
+      .leftJoin("student", "group_student_pay.student_id", "student.id")
+      .leftJoin("direction", "groups.direction_id", "direction.id")
+      .limit(limit)
+      .offset(skip)
+      .orderBy("payment_status", "asc")
+      }
     
 
     // Transform the result to match the desired data structure
@@ -335,6 +359,27 @@ exports.getStudentByCode = async(req, res) => {
 
     return res.status(200).json({ success: true, data: student })
   } catch (error) { 
+    console.log(error)
+  }
+}
+
+exports.getStudentPayData = async(req, res) => {
+  try {
+    const { student_id } = req.params
+    const { group_id } = req.query
+
+    if (isNaN(student_id) || isNaN(group_id)) return res.status(400).json({ success: false, message: "Invalid request!" })
+    
+    const payments = await GroupStudentPay.knex().raw(`
+      SELECT gsp.*, s.full_name, s.phone, gsp.code AS gsp_code, s.code AS student_code
+      FROM group_student_pay AS gsp
+      INNER JOIN student AS s ON gsp.student_id = s.id
+      WHERE gsp.group_id = ${group_id} AND student_id = ${student_id};
+    `);
+
+    return res.status(200).json({ success: true, data: payments[0] })
+
+  } catch (error) {
     console.log(error)
   }
 }

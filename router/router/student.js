@@ -18,6 +18,7 @@ router.post("/pay/:id", authMiddleware, Student.createPay);
 router.get("/by-code/:code", authMiddleware, Student.getStudentByCode)
 
 router.get("/get-pay-type", authMiddleware, Student.getPayType);
+router.get("/pay-data/:student_id", authMiddleware, Student.getStudentPayData)
 
 module.exports = router; 
  

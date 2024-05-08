@@ -13,7 +13,12 @@ router.get("/service", authMiddleware, Group.getServices);
 router.get("/get-mentor", authMiddleware, Group.getAllMentor);
 router.get("/student-contract/:id", authMiddleware, Group.getGroupUserContractData);
 router.get("/group-students/:id", authMiddleware, Group.getGroupStudents);
+router.get("/group-student-pays/:group_id", authMiddleware, Group.getGroupStudentsPays)
 router.post("/add-checkup", authMiddleware, Group.postCheckStudent);
+
+router.get("/details/:id", authMiddleware, Group.getGroupDetails)
+
+
 
 router.get("/group-checkup/:id", authMiddleware, Group.getCheckUpGroup)
 
