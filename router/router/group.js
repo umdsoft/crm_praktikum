@@ -15,11 +15,9 @@ router.get("/student-contract/:id", authMiddleware, Group.getGroupUserContractDa
 router.get("/group-students/:id", authMiddleware, Group.getGroupStudents);
 router.get("/group-student-pays/:group_id", authMiddleware, Group.getGroupStudentsPays)
 router.post("/add-checkup", authMiddleware, Group.postCheckStudent);
+router.put("/change-status/:group_id", authMiddleware, Group.changeStatus)
 
 router.get("/details/:id", authMiddleware, Group.getGroupDetails)
-
-
-
 router.get("/group-checkup/:id", authMiddleware, Group.getCheckUpGroup)
 
 

@@ -60,7 +60,6 @@ exports.create = async (req, res) => {
 };
 exports.register = async (req, res) => {
   try {
-    console.log(req.body)
     const old_lead = await Lead.query().where("phone", req.body.phone).first();
     let ads = await Reklama.query().where("utm_id", req.body.target).first();
     if (!ads) {
@@ -315,8 +314,11 @@ exports.getTasksLead = async (req, res) => {
         .leftJoin("user", "lead_task.user_id", "user.id")
 
 
+
+        console.log(data);
     return res.status(200).json({ success: true, data });
   } catch (error) {
     console.log(error)
   }
 }
+
