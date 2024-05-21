@@ -1,5 +1,7 @@
 const Lesson = require("../models/Lesson");
+const LessonDars = require("../models/LessonDars");
 const LessonModule = require("../models/LessonModule");
+const sql = require("../setting/mDb.js")
 
 exports.createLesson = async (req, res) => {
   try {
@@ -49,14 +51,14 @@ exports.getAllLesson = async (req, res) => {
 	(SELECT count(*) from lesson_module lm WHERE lm.lesson_id = l.id) as module_count
 FROM lesson AS l
 LEFT JOIN direction direc ON direc.id = l.direction_id
-ORDER BY l.id DESC;
+ORDER BY l.id ASC;
     `);
 
     return res.status(200).json({
       success: true,
       data: allCourse[0],
       total: allCourse[0].length,
-      total: allLessonsCount[0][0].total, 
+      total: allLessonsCount[0][0].total,
       limit: limit,
     });
   } catch (e) {
@@ -92,3 +94,28 @@ LIMIT ${limit} OFFSET ${skip};
     console.log(e);
   }
 };
+
+
+
+
+exports.getLessonDars = async (req, res) => {
+  try {
+    const page = req.query.page || 1;
+    const limit = req.query.limit || 15;
+    const skip = (page - 1) * limit;
+    const module_id = req.params.module_id;
+    
+    const data = await sql('lesson_dars')
+      .select(
+        'lesson_dars.*'
+      )
+     .where('module_id', module_id)
+     .orderBy('id', 'desc')
+     .limit(limit)
+     .offset(skip)
+
+     return res.status(200).json({ success: true, data: data });
+  } catch (error) {
+    console.log(error);
+  }
+}

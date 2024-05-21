@@ -8,4 +8,6 @@ router.get("/get-all",authMiddleware, Lesson.getAllLesson);
 router.post("/module/create",authMiddleware, Lesson.createLessonModule);
 router.get("/module/get-all/:id",authMiddleware, Lesson.getAllLessonModule);
 
+router.get("/dars/:module_id", authMiddleware, Lesson.getLessonDars)
+
 module.exports = router;
