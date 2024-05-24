@@ -8,4 +8,5 @@ app.use("/lesson", require("./router/lesson"));
 app.use("/lead", require("./router/lead"));
 app.use("/reklama", require("./router/reklama"));
 app.use("/task", require("./router/task"));
+app.use("/test", require("./router/test"));
 module.exports = app;

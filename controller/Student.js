@@ -6,7 +6,7 @@ const authHelper = require("../helper/authHelper");
 const secret = require("../setting/setting").jwt;
 const Token = require("../models/Token");
 const GroupStudentPay = require("../models/GroupStudentPay");
-const { signUpValidator } = require("../helper/validator");
+const { signUpSchema } = require("../helper/validator");
 const { generateRandomString } = require("../setting/randomString");
 const PayType = require("../models/PayType");
 const some = require("../setting/mDb");
@@ -111,20 +111,20 @@ exports.getAll = async (req, res) => {
 
 exports.login = async (req, res) => {
   try {
-    const { error, value } = signUpValidator.validate(req.body);
+    const { error, value } = signUpSchema.validate(req.body);
     if (error) {
-      console.log(error);
       return res
         .status(400)
         .json({ success: false, msg: error.details[0].message });
     }
-    const user = await Student.query().where("phone", req.body.phone).first();
+    const user = await Student.query().where("phone", value.phone).first();
     if (!user) {
       return res
         .status(404)
         .json({ success: false, message: "user-not-found" });
     }
-    const isValid = bcrypt.compareSync(req.body.password, user.password);
+    const isValid = await bcrypt.compare(value.password, user.password)
+
     if (isValid) {
       updateTokens(user.id).then((tokens) =>
         res.status(200).json({ success: true, tokens })
@@ -135,6 +135,7 @@ exports.login = async (req, res) => {
         .json({ success: false, msg: "invalid-credebtials" });
     }
   } catch (error) {
+    console.log(error);
     return res.status(500).json({ success: false, msg: error.message });
   }
 };

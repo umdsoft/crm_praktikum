@@ -15,6 +15,11 @@ const validator = (schema) => {
 const signUpSchema = Joi.object({
   phone: Joi.string().required(),
   password: Joi.string().min(3).required(),
-});
+})
+
+exports.signUpSchema = Joi.object({
+  phone: Joi.string().required(),
+  password: Joi.string().min(3).required(),
+})
 
 exports.signUpValidator = validator(signUpSchema);
