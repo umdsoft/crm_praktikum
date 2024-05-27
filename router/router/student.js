@@ -20,6 +20,7 @@ router.get("/by-code/:code", authMiddleware, Student.getStudentByCode)
 router.get("/get-pay-type", authMiddleware, Student.getPayType);
 router.get("/pay-data/:student_id", authMiddleware, Student.getStudentPayData)
 router.put("/discount/:gsp_id", authMiddleware, Student.setDiscountStudent)
+router.get("/group-lessons/:group_id", authMiddleware, Student.getGroupLessonsWithStatus)
 
 router.get("/rentals", authMiddleware, Student.getRentalStudent)
 
