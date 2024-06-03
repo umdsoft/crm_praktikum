@@ -7,4 +7,6 @@ app.use("/group", require("./router/group"));
 app.use("/lesson", require("./router/lesson"));
 app.use("/lead", require("./router/lead"));
 app.use("/reklama", require("./router/reklama"));
+
+app.use('/test/user', require('./test/User'))
 module.exports = app;
