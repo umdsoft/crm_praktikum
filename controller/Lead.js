@@ -3,6 +3,7 @@ const LeadInterested = require("../models/lead_interested");
 const Target = require("../models/target");
 const NewLead = require("../models/NewLead");
 const LeadAction = require("../models/lead_action");
+const sql = require("../setting/mDb");
 const jwt = require("jsonwebtoken");
 const Reklama = require("../models/reklama");
 const LeadTask = require("../models/lead_task");
@@ -59,7 +60,6 @@ exports.create = async (req, res) => {
 };
 exports.register = async (req, res) => {
   try {
-    console.log(req.body)
     const old_lead = await Lead.query().where("phone", req.body.phone).first();
     let ads = await Reklama.query().where("utm_id", req.body.target).first();
     if (!ads) {
@@ -283,27 +283,42 @@ exports.editLead = async (req, res) => {
   }
 };
 
-
 exports.createTaskLead = async (req, res) => {
   try {
     const candidate = jwt.decode(req.headers.authorization.split(" ")[1]); 
 
     await LeadTask.query().insert({
       lead_id: req.body.lead_id,
-      task: req.body.task
-    }); 
+      task: req.body.task,
+      user_id: candidate.user_id
+    })
+
 
     return res.status(200).json({ success: true });
   } catch (error) {
-    console.log(error)
+    console.log("Error occurred:", error);
+    return res.status(500).json({ success: false, error: "Internal server error" });
   }
 }
 
+
 exports.getTasksLead = async (req, res) => {
   try {
-    const tasks = await LeadTask.query().where("lead_id", req.params.lead_id);
-    return res.status(200).json({ success: true, tasks });
+    const data = await sql("lead_task")
+        .select(
+          "lead_task.*",
+          "user.id as user_id",
+          "user.name as user_name",
+          "user.role as user_role",
+        ).where('lead_id', req.params.lead_id)
+        .leftJoin("user", "lead_task.user_id", "user.id")
+
+
+
+        console.log(data);
+    return res.status(200).json({ success: true, data });
   } catch (error) {
     console.log(error)
   }
 }
+

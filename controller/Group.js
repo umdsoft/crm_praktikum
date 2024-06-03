@@ -32,7 +32,7 @@ exports.create = async (req, res) => {
       day: req.body.day,
       room_id: req.body.room_id,
       time: req.body.time,
-      start_date: req.body.start_date,
+      // start_date: req.body.start_date,
       duration: req.body.duration,
       code,
     });
@@ -51,7 +51,8 @@ exports.getDate = async (req, res) => {
   } catch (e) {
     console.log(e);
   }
-};
+}
+
 // let allGroup;
 // const knex = await Group.knex();
 // if (req.query.search) {
@@ -124,6 +125,7 @@ exports.getAllGroup = async (req, res) => {
           "groups.created as created",
           "groups.code as code",
           "groups.status as status",
+          "groups.duration as duration",
           "groups.main_mentor as main_mentor_id",
           "groups.second_mentor as second_mentor_id",
           "groups.english_mentor as english_mentor_id",
@@ -165,6 +167,7 @@ exports.getAllGroup = async (req, res) => {
           "groups.created as created",
           "groups.code as code",
           "groups.status as status",
+          "groups.duration as duration",
           "groups.main_mentor as main_mentor_id",
           "groups.second_mentor as second_mentor_id",
           "groups.english_mentor as english_mentor_id",
@@ -214,18 +217,69 @@ exports.createGroupStudent = async (req, res) => {
     const lastDate = await GroupStudent.query()
       .select("id")
       .orderBy("id", "desc")
-      .first();
-    const idsss = lastDate ? [`${lastDate.id + 1}`] : [1];
-    const contract_number = `${group.code}/${idsss}`;
-    await GroupStudent.query().insert({
-      student_id: req.body.student_id,
-      group_id: req.body.group_id,
-      contract: contract_number,
-      status: 0,
-      project_id: req.body.project_id,
-      amount: req.body.amount,
-      social_status_id: req.body.social_status_id,
-    });
+      .first()
+
+    const idsss = lastDate ? [`${lastDate.id + 1}`] : [1]
+    const contract_number = `${group.code}/${idsss}`
+
+
+
+    if (group.status === 1) {
+
+
+
+      let repush = []
+
+      const start_month = new Date(group.start_date)
+      const now_month = new Date(req.body.join_date)
+
+      if (now_month < start_month) {
+        return res.status(400).json({ success: false, msg: "join", text: `${group.start_date}` })
+      }
+
+
+      const rezonans = now_month.getMonth() - start_month.getMonth()
+
+      for (let i = 0; i < group.duration - rezonans; i++) {
+        repush.push(i)
+      }
+      const gs = await GroupStudent.query().insert({
+        student_id: req.body.student_id,
+        group_id: req.body.group_id,
+        contract: contract_number,
+        status: 0,
+        project_id: req.body.project_id,
+        amount: req.body.amount,
+        social_status_id: req.body.social_status_id
+      })
+
+      repush.forEach(async (item) => {
+        const currentDate = new Date(req.body.join_date)
+        currentDate.setDate(currentDate.getDate() + 5)
+        currentDate.setMonth(currentDate.getMonth() + item)
+
+        await GroupStudentPay.query().insert({
+          gs_id: gs.id,
+          amount: req.body.amount,
+          status: 0,
+          group_id: group.id,
+          payment_date: currentDate,
+          student_id: gs.student_id
+        })
+      })
+
+    } else if (group.status === 0) {
+      const gs = await GroupStudent.query().insert({
+        student_id: req.body.student_id,
+        group_id: req.body.group_id,
+        contract: contract_number,
+        status: 0,
+        project_id: req.body.project_id,
+        amount: req.body.amount,
+        social_status_id: req.body.social_status_id
+      })
+    }
+
     return res.status(201).json({ success: true });
   } catch (e) {
     console.log(e);
@@ -253,7 +307,7 @@ exports.startGroup = async (req, res) => {
 
     groupUsers.forEach(async (item) => {
       for (let i = 0; i < group.duration; i++) {
-        const currentDate = new Date(group.start_date);
+        const currentDate = new Date(req.body.start_date);
         currentDate.setDate(currentDate.getDate() + 5);
         currentDate.setMonth(currentDate.getMonth() + i);
         await GroupStudentPay.query().insert({
@@ -274,7 +328,9 @@ exports.startGroup = async (req, res) => {
       second_mentor: req.body.second_mentor,
       english_mentor: req.body.english_mentor,
       start_date: startDate,
-    });
+    })
+
+
     return res.status(200).json({ success: true });
   } catch (e) {
     console.log(e);
@@ -298,9 +354,12 @@ exports.getOneCourseData = async (req, res) => {
       .select(
         "student.id as student_id",
         "student.code as student_code",
+        "group_student.contract as contract",
+        "project.name as project",
         "student.*"
       )
       .leftJoin("student", "group_student.student_id", "student.id")
+      .leftJoin("project", "group_student.project_id", "project.id")
       .where("group_student.group_id", req.params.id);
 
     const payment = await GroupStudentPay.knex().raw(`
@@ -334,24 +393,43 @@ exports.getServices = async (req, res) => {
     console.log(e);
   }
 };
+
 exports.checkStudent = async (req, res) => {
   try {
-    console.log(req.params.id);
-    const student = await Student.query().where("code", req.params.id).first();
+    const student = await Student.query().where("code", req.body.student_code).first();
+    const group = await Group.query().where("id", req.body.group_id).first()
+
+
     if (!student) {
       return res.status(200).json({ success: false, message: 1 });
     }
+
+    if (!group) {
+      return res.status(200).json({ success: false, message: 0 })
+    }
+
+
     const groupStudent = await GroupStudent.query()
+      .where("group_id", group.id)
       .where("student_id", student.id)
       .first();
+
     if (groupStudent) {
       return res.status(200).json({ success: false, message: 2 });
     }
+
     return res.status(200).json({ success: true });
+
   } catch (e) {
     console.log(e);
   }
 };
+
+
+
+
+
+
 exports.getAllMentor = async (req, res) => {
   try {
     const mentor = await User.query().where("role", 8).select("id", "name");
@@ -396,6 +474,7 @@ exports.getGroupUserContractData = async (req, res) => {
       .where("group_student.student_id", student_id)
       .first();
 
+
     if (!groupStudentData) {
       return res
         .status(400)
@@ -420,6 +499,7 @@ exports.getGroupUserContractData = async (req, res) => {
       group_created: groupStudentData.group_created,
       amount: groupStudentData.amount,
       amount_status: groupStudentData.amount_status,
+      start_date: groupStudentData.start_date,
       direction,
       student: {
         id: groupStudentData.student_id,
@@ -508,7 +588,8 @@ exports.getCheckUpGroup = async (req, res) => {
       )
       .leftJoin("student", "group_student_checkup.student_id", "student.id")
       .where("group_id", req.params.id);
-
+      
+      
     const groupedCheckup = {};
     checkup.forEach((check) => {
       const createdDate = check.created.toISOString().split("T")[0];
@@ -533,3 +614,97 @@ exports.getCheckUpGroup = async (req, res) => {
       .json({ success: false, error: "Internal server error" });
   }
 };
+
+
+
+
+exports.getGroupStudentsPays = async (req, res) => {
+  try {
+    const { group_id } = req.params; // 0, 1, 2, 3, ...
+    const { month } = req.query;
+
+    if (!group_id) return res.status(400).json({ success: false, msg: "group_id invalid" })
+
+    const group = await Group.query().select("*").where("id", group_id).first()
+    if (!group) return res.status(400).json({ success: false, msg: "Not found group!" })
+
+    let months = []
+    const cd = new Date()
+
+    for (let i = 0; i < group.duration; i++) {
+      const currentDate = new Date(group.start_date)
+      currentDate.setMonth(currentDate.getMonth() + i)
+      months.push(currentDate.getMonth() + 1)
+    }
+
+    months.sort((a, b) => {
+      if (a < b) {
+        return -1;
+      }
+      if (a > b) {
+        return 1;
+      }
+      return 0;
+    })
+
+    const currentMonth = month || months[0]
+
+    const payment = await GroupStudentPay.knex().raw(`
+      SELECT gsp.*, s.full_name, s.phone, gsp.code AS gsp_code, s.code AS student_code
+      FROM group_student_pay AS gsp
+      INNER JOIN student AS s ON gsp.student_id = s.id
+      WHERE gsp.group_id = ${group_id} AND MONTH(gsp.payment_date) = ${currentMonth};
+    `);
+
+    res.status(200).json({ success: true, current: cd.getMonth() + 1, months, data: payment[0] });
+  } catch (error) {
+    console.log(error);
+    res.status(500).json({ success: false, error: "Internal Server Error" });
+  }
+};
+
+
+
+exports.getGroupDetails = async (req, res) => {
+  try {
+    const { id } = req.params
+
+    if (isNaN(id)) return res.status(400).json({ success: false, message: "Invalid ID!" })
+
+    const group = await Group.query().select("*").where("id", id).first()
+
+    return res.status(200).json({ success: true, data: group })
+
+  } catch (error) {
+    console.log(error);
+  }
+}
+
+
+
+exports.changeStatus = async (req, res) => {
+  try {
+    const { group_id } = req.params
+    const { status } = req.body
+    if (Number(isNaN(group_id))) return res.status(400).json({ message: "Invalid group_id!" })
+    if (Number(isNaN(status))) return res.status(400).json({ message: "Invalid status! Only number!" })
+    if (Number(status) !== 2) return res.status(400).json({ message: "Hozircha faqat guruhni tugatish funksiyasi ishlaydi!" })
+
+    const group = await Group.query().where("id", group_id).first()
+    if (!group) return res.status(400).json({ message: "Guruh topilmadi!" })
+
+    const todayDate = new Date()
+    let current = new Date(group.start_date)
+    current.setMonth(current.getMonth() + group.duration)
+
+    if (current >= todayDate) return res.status(400).json({ message: "Hali tugata olmaysiz!" })
+
+    const updated = await Group.query().where("id", group_id).update({ status: status })
+
+
+    return res.status(200).json({ success: true, data: updated })
+
+  } catch (error) {
+    console.log(error);
+  }
+}

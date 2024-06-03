@@ -6,7 +6,7 @@ const authHelper = require("../helper/authHelper");
 const secret = require("../setting/setting").jwt;
 const Token = require("../models/Token");
 const GroupStudentPay = require("../models/GroupStudentPay");
-const { signUpValidator } = require("../helper/validator");
+const { signUpSchema } = require("../helper/validator");
 const { generateRandomString } = require("../setting/randomString");
 const PayType = require("../models/PayType");
 const some = require("../setting/mDb");
@@ -111,20 +111,20 @@ exports.getAll = async (req, res) => {
 
 exports.login = async (req, res) => {
   try {
-    const { error, value } = signUpValidator.validate(req.body);
+    const { error, value } = signUpSchema.validate(req.body);
     if (error) {
-      console.log(error);
       return res
         .status(400)
         .json({ success: false, msg: error.details[0].message });
     }
-    const user = await Student.query().where("phone", req.body.phone).first();
+    const user = await Student.query().where("phone", value.phone).first();
     if (!user) {
       return res
         .status(404)
         .json({ success: false, message: "user-not-found" });
     }
-    const isValid = bcrypt.compareSync(req.body.password, user.password);
+    const isValid = await bcrypt.compare(value.password, user.password);
+
     if (isValid) {
       updateTokens(user.id).then((tokens) =>
         res.status(200).json({ success: true, tokens })
@@ -135,6 +135,7 @@ exports.login = async (req, res) => {
         .json({ success: false, msg: "invalid-credebtials" });
     }
   } catch (error) {
+    console.log(error);
     return res.status(500).json({ success: false, msg: error.message });
   }
 };
@@ -178,35 +179,68 @@ exports.getPayment = async (req, res) => {
   try {
     const limit = req.query.limit || 15;
     const skip = (req.query.page - 1) * limit;
+    const searchTerm = req.query.search;
 
     const paymentsCount = await some("group_student_pay")
       .count("id as count")
       .first();
 
-    const payments = await some("group_student_pay")
-      .select(
-        "group_student_pay.id as payment_id",
-        "group_student_pay.code as payment_code",
-        "group_student_pay.status as payment_status",
-        "group_student_pay.amount as pay_amount",
-        "group_student_pay.*",
-        "groups.id as group_id",
-        "groups.status as group_status",
-        "groups.amount as group_amount",
-        "groups.*",
-        "student.id as student_id",
-        "student.code as student_code",
-        "student.*",
-        "direction.id as direction_id",
-        "direction.name as direction_name",
-        "direction.code as direction_code"
-      )
-      .leftJoin("groups", "group_student_pay.group_id", "groups.id")
-      .leftJoin("student", "group_student_pay.student_id", "student.id")
-      .leftJoin("direction", "groups.direction_id", "direction.id")
-      .limit(limit)
-      .offset(skip)
-      .orderBy("payment_status", "asc");
+    let payments;
+
+    if (searchTerm) {
+      payments = await some("group_student_pay")
+        .select(
+          "group_student_pay.id as payment_id",
+          "group_student_pay.code as payment_code",
+          "group_student_pay.status as payment_status",
+          "group_student_pay.amount as pay_amount",
+          "group_student_pay.*",
+          "groups.id as group_id",
+          "groups.status as group_status",
+          "groups.amount as group_amount",
+          "groups.*",
+          "student.id as student_id",
+          "student.code as student_code",
+          "student.*",
+          "direction.id as direction_id",
+          "direction.name as direction_name",
+          "direction.code as direction_code"
+        )
+        .leftJoin("groups", "group_student_pay.group_id", "groups.id")
+        .leftJoin("student", "group_student_pay.student_id", "student.id")
+        .leftJoin("direction", "groups.direction_id", "direction.id")
+        .where(function () {
+          this.where("full_name", "like", `%${searchTerm}%`);
+        })
+        .limit(limit)
+        .offset(skip)
+        .orderBy("payment_status", "asc");
+    } else {
+      payments = await some("group_student_pay")
+        .select(
+          "group_student_pay.id as payment_id",
+          "group_student_pay.code as payment_code",
+          "group_student_pay.status as payment_status",
+          "group_student_pay.amount as pay_amount",
+          "group_student_pay.*",
+          "groups.id as group_id",
+          "groups.status as group_status",
+          "groups.amount as group_amount",
+          "groups.*",
+          "student.id as student_id",
+          "student.code as student_code",
+          "student.*",
+          "direction.id as direction_id",
+          "direction.name as direction_name",
+          "direction.code as direction_code"
+        )
+        .leftJoin("groups", "group_student_pay.group_id", "groups.id")
+        .leftJoin("student", "group_student_pay.student_id", "student.id")
+        .leftJoin("direction", "groups.direction_id", "direction.id")
+        .limit(limit)
+        .offset(skip)
+        .orderBy("payment_status", "asc");
+    }
 
     // Transform the result to match the desired data structure
     const formattedPayments = payments.map((payment) => ({
@@ -315,5 +349,180 @@ exports.editStudent = async (req, res) => {
     return res.status(200).json({ success: true });
   } catch (e) {
     console.log(e);
+  }
+};
+
+exports.getStudentByCode = async (req, res) => {
+  try {
+    const student = await Student.query()
+      .where("code", req.params.code)
+      .first();
+
+    return res.status(200).json({ success: true, data: student });
+  } catch (error) {
+    console.log(error);
+  }
+};
+
+exports.getStudentPayData = async (req, res) => {
+  try {
+    const { student_id } = req.params;
+    const { group_id } = req.query;
+
+    if (isNaN(student_id) || isNaN(group_id))
+      return res
+        .status(400)
+        .json({ success: false, message: "Invalid request!" });
+
+    const payments = await GroupStudentPay.knex().raw(`
+      SELECT gsp.*, s.full_name, s.phone, gsp.code AS gsp_code, s.code AS student_code
+      FROM group_student_pay AS gsp
+      INNER JOIN student AS s ON gsp.student_id = s.id
+      WHERE gsp.group_id = ${group_id} AND student_id = ${student_id};
+    `);
+
+    return res.status(200).json({ success: true, data: payments[0] });
+  } catch (error) {
+    console.log(error);
+  }
+};
+
+exports.setDiscountStudent = async (req, res) => {
+  try {
+    const { gsp_id } = req.params;
+    const { summa } = req.body;
+    if (isNaN(gsp_id))
+      return res.status(400).json({ success: false, msg: "Invalid group_id" });
+    if (isNaN(summa))
+      return res.status(400).json({ success: false, msg: "Invalid summa!" });
+
+    const gsp = await GroupStudentPay.query().where("id", gsp_id).first();
+    if (!gsp) return res.status(400).json({ success: false, msg: "not-found" });
+
+    if (gsp.discount || gsp.status === 1)
+      return res.status(400).json({ success: false, msg: "exist-discount" });
+
+    await GroupStudentPay.query()
+      .where("id", gsp_id)
+      .update({
+        amount: gsp.amount - summa,
+        discount: (summa / (gsp.amount / 100)).toFixed(2),
+      });
+
+    return res.status(200).json({ success: true, msg: "ok" });
+  } catch (error) {
+    console.log(error);
+  }
+};
+
+exports.getRentalStudent = async (req, res) => {
+  try {
+    const limit = req.query.limit || 15;
+    const page = req.query.page || 1;
+    const skip = (page - 1) * limit;
+    const searchTerm = req.query.search;
+
+    let paymentsQuery = some("group_student_pay")
+      .select(
+        "group_student_pay.id as payment_id",
+        "group_student_pay.code as payment_code",
+        "group_student_pay.status as payment_status",
+        "group_student_pay.amount as pay_amount",
+        "group_student_pay.*",
+        "groups.id as group_id",
+        "groups.status as group_status",
+        "groups.amount as group_amount",
+        "groups.*",
+        "student.id as student_id",
+        "student.code as student_code",
+        "student.*",
+        "direction.id as direction_id",
+        "direction.name as direction_name",
+        "direction.code as direction_code"
+      )
+      .leftJoin("groups", "group_student_pay.group_id", "groups.id")
+      .leftJoin("student", "group_student_pay.student_id", "student.id")
+      .leftJoin("direction", "groups.direction_id", "direction.id")
+      .where("group_student_pay.status", 0) // Filter for status = 0
+      .orderBy("payment_status", "asc");
+
+    if (searchTerm) {
+      paymentsQuery = paymentsQuery.where(function () {
+        this.where("full_name", "like", `%${searchTerm}%`);
+      });
+    }
+
+    // Add filter condition: today > payment_date
+    const today = new Date();
+    paymentsQuery = paymentsQuery.whereRaw("payment_date < ?", [today]);
+
+    // Clone the query to count the total number of records
+    const totalCountQuery = paymentsQuery
+      .clone()
+      .count("group_student_pay.id as count")
+      .first();
+    const totalCount = await totalCountQuery;
+
+    // Apply pagination
+    paymentsQuery = paymentsQuery.limit(limit).offset(skip);
+
+    const payments = await paymentsQuery;
+
+    // Transform the result to match the desired data structure
+    const formattedPayments = payments.map((payment) => ({
+      id: payment.payment_id,
+      status: generateStatus(
+        payment.payment_status,
+        payment.payment_date,
+        payment.paid_date
+      ),
+      payment_date: payment.payment_date,
+      paid_date: payment.paid_date,
+      paid_time: payment.paid_time,
+      gs_id: payment.gs_id,
+      pay_type: payment.pay_type,
+      amount: payment.pay_amount,
+      discount: payment.discount,
+      code: payment.payment_code,
+      student: {
+        id: payment.student_id,
+        full_name: payment.full_name,
+        code: payment.student_code,
+        phone: payment.phone,
+      },
+      group: {
+        id: payment.group_id,
+        name: payment.direction_name,
+      },
+    }));
+
+    return res.status(200).json({
+      success: true,
+      total: totalCount.count, // Total count after filtering
+      limit: limit,
+      page: page,
+      data: formattedPayments,
+    });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: "An error occurred while fetching data" });
+  }
+};
+
+exports.getGroupLessonsWithStatus = async (req, res) => {
+  try {
+    const { group_id } = req.params;
+    if (isNaN(group_id))
+      return res.status(400).json({ success: false, msg: "Invalid group_id" })
+  
+    const groupStudents = await some("lesson").select(
+      "lesson.*",    
+    )
+     .orderBy("id", "asc")
+
+     return res.status(200).json({ success: true, data: groupStudents });
+    
+  } catch (error) {
+    console.log(error);
   }
 };

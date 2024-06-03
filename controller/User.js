@@ -163,7 +163,7 @@ exports.me = async (req, res) => {
     const user = await Users.query()
       .where("id", candidate.user_id)
       .first()
-      .select("name", "phone", "role");
+      .select("id", "name", "phone", "role");
     return res.status(200).json({ success: true, data: user });
   } catch (e) {
     console.log(e);
