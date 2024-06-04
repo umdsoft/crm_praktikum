@@ -6,6 +6,7 @@ const secret = require("../setting/setting").jwt;
 const Token = require("../models/Token");
 const { signUpValidator } = require("../helper/validator");
 const Role = require("../models/Role");
+
 const updateTokens = (user_id) => {
   const accessToken = authHelper.generateAccessToken(user_id);
   const refreshToken = authHelper.generateRefreshToken();

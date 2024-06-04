@@ -1,3 +1,4 @@
+
 const express = require("express")
 const app = express()
 app.use("/user", require("./router/user"))
@@ -11,6 +12,5 @@ app.use("/task", require("./router/task"))
 app.use("/test", require("./router/test"))
 
 app.use("/my", require("./router/my"));
-
 
 module.exports = app;

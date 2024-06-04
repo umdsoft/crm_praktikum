@@ -1,6 +1,7 @@
 const jwt = require("jsonwebtoken");
 const { secret, tokens } = require("../setting/setting").jwt;
 const Token = require("../models/Token");
+
 const generateAccessToken = (user_id) => {
   const payload = {
     user_id,
@@ -11,7 +12,7 @@ const generateAccessToken = (user_id) => {
 };
 
 const generateRefreshToken = () => {
-    const uid = Math.floor(100000 + Math.random() * 900000)
+  const uid = Math.floor(100000 + Math.random() * 900000);
   const payload = {
     id: uid,
     type: tokens.refresh.type,
