@@ -7,10 +7,12 @@ const sql = require("../setting/mDb.js");
 const {
   createLDSchema,
   createFileSchema,
+  changeStatusDarsSchema,
 } = require("../validators/lesson-validators.js");
 const jwt = require("jsonwebtoken");
 const Test = require("../models/Test.js");
 const User = require("../models/User.js");
+const LessonOpen = require("../models/LessonOpen.js");
 
 exports.createLesson = async (req, res) => {
   try {
@@ -180,7 +182,29 @@ exports.createLessonDars = async (req, res) => {
         .json({ success: false, msg: error.details[0].message });
     }
 
-    await LessonDars.query().insert(value);
+    const dars = await LessonDars.query().insert(value);
+
+    if (!dars) return res.status(400).json({ success: false, msg: "Error" });
+
+    const lesson = await sql("lesson")
+      .select("lesson.*", "lesson_module.id AS module_id")
+      .leftJoin("lesson_module", "lesson.id", "lesson_module.lesson_id")
+      .where("lesson_module.id", value.module_id)
+      .first();
+
+    const groups = await sql("groups")
+      .select("id")
+      .where("direction_id", lesson.direction_id);
+
+    console.log(groups);
+
+    groups.forEach(async (group) => {
+      await LessonOpen.query().insert({
+        lesson_dars_id: dars.id,
+        group_id: group.id,
+        status: 0,
+      });
+    });
 
     return res.status(201).json({ success: true });
   } catch (e) {
@@ -197,10 +221,12 @@ exports.getDarsById = async (req, res) => {
       });
     }
 
-    const tests = await Test.query().where('lesson_dars_id', req.params.id)
+    const tests = await Test.query().where("lesson_dars_id", req.params.id);
 
     const dars = await LessonDars.query().findById(req.params.id);
-    return res.status(200).json({ success: true, dars, tests_count: tests.length });
+    return res
+      .status(200)
+      .json({ success: true, dars: dars, tests_count: tests.length });
   } catch (error) {
     console.log(error);
   }
@@ -208,16 +234,16 @@ exports.getDarsById = async (req, res) => {
 
 exports.getDarsFiles = async (req, res) => {
   try {
-    const page = req.query.page || 1
-    const limit = req.query.limit || 15
-    const skip = (page - 1) * limit
-    const dars_id = parseInt(req.params.dars_id)
+    const page = req.query.page || 1;
+    const limit = req.query.limit || 15;
+    const skip = (page - 1) * limit;
+    const dars_id = parseInt(req.params.dars_id);
 
     if (isNaN(dars_id)) {
       return res.status(400).json({
         success: false,
         message: "Invalid ID",
-      })
+      });
     }
 
     const files = await sql("lesson_dars_files")
@@ -225,13 +251,13 @@ exports.getDarsFiles = async (req, res) => {
       .where("lesson_dars_id", dars_id)
       .orderBy("id", "desc")
       .limit(limit)
-      .offset(skip)
+      .offset(skip);
 
-    return res.status(200).json({ success: true, files })
+    return res.status(200).json({ success: true, files });
   } catch (error) {
-    console.log(error)
+    console.log(error);
   }
-}
+};
 
 exports.createLessonDarsFile = async (req, res) => {
   try {
@@ -252,7 +278,7 @@ exports.createLessonDarsFile = async (req, res) => {
     const existData = await LessonDarsFiles.query().findOne({
       lesson_dars_id: value.lesson_dars_id,
       file_url: value.file_url,
-    })
+    });
 
     if (existData) {
       return res.status(400).json({
@@ -261,25 +287,23 @@ exports.createLessonDarsFile = async (req, res) => {
       });
     }
 
+    const data = await LessonDarsFiles.query().insert(req.body);
 
-    const data = await LessonDarsFiles.query().insert(req.body)
-
-    return res.status(201).json({ success: true, data })
+    return res.status(201).json({ success: true, data });
   } catch (error) {
     console.log(error);
   }
 };
 
-
 exports.deleteLessonDarsFile = async (req, res) => {
   try {
-    if (isNaN(parseInt(req.params.id))) { 
+    if (isNaN(parseInt(req.params.id))) {
       return res.status(400).json({
         success: false,
         message: "Invalid ID",
       });
     }
-    const file = await LessonDarsFiles.query().findById(req.params.id)
+    const file = await LessonDarsFiles.query().findById(req.params.id);
     if (!file) {
       return res.status(404).json({
         success: false,
@@ -287,11 +311,61 @@ exports.deleteLessonDarsFile = async (req, res) => {
       });
     }
 
-    const deleted = await LessonDarsFiles.query().deleteById(req.params.id)
+    const deleted = await LessonDarsFiles.query().deleteById(req.params.id);
 
-    return res.status(200).json({ success: true, deleted })
-
+    return res.status(200).json({ success: true, deleted });
   } catch (error) {
     console.log(error);
   }
-}
+};
+
+exports.getLessonList = async (req, res) => {
+  try {
+    const group_id = parseInt(req.query.group_id);
+    const module_id = parseInt(req.query.module_id);
+
+    if (isNaN(group_id) || isNaN(module_id)) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid ID",
+      });
+    }
+
+    const openLessons = await sql("lesson_open")
+      .select("lesson_open.*", "lesson_dars.name AS lesson_name")
+      .where("lesson_open.group_id", group_id)
+      .where("lesson_dars.module_id", module_id)
+      .leftJoin("lesson_dars", "lesson_open.lesson_dars_id", "lesson_dars.id");
+
+    return res.status(200).json({ success: true, data: openLessons });
+  } catch (error) {
+    console.log(error);
+  }
+};
+
+exports.changeDarsStatus = async (req, res) => {
+  try {
+    const open_lesson_id = parseInt(req.params.id);
+    if (isNaN(open_lesson_id)) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid ID",
+      });
+    } 
+
+    const currentDate = new Date();
+
+    const { error, value } = changeStatusDarsSchema.validate(req.body);
+    if (error) return res.status(400).json({ success: false, msg: error.details[0].message });
+
+    await LessonOpen.query().update({
+      status: value.status,
+      open_date: currentDate
+    }).where("id", open_lesson_id)
+    
+    return res.status(200).json({ success: true });
+    
+  } catch (error) {
+    console.log(error);
+  }
+};

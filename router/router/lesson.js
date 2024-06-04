@@ -12,10 +12,13 @@ router.get("/module/detail/:id", authMiddleware, Lesson.getLessonModuleDetail);
 router.get("/dars/:module_id", authMiddleware, Lesson.getLessonDars)
 router.get("/dars/detail/:id", authMiddleware, Lesson.getDarsById)
 router.post("/dars/create", authMiddleware, Lesson.createLessonDars)
+router.get("/dars/list/data", authMiddleware, Lesson.getLessonList)
+router.put("/dars/status/:id", authMiddleware, Lesson.changeDarsStatus)
 
 router.get("/dars/files/:dars_id", authMiddleware, Lesson.getDarsFiles)
 router.post("/dars/file/create", authMiddleware, Lesson.createLessonDarsFile)
 router.delete("/dars/file/delete/:id", authMiddleware, Lesson.deleteLessonDarsFile)
+
 
 
 

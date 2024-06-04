@@ -30,7 +30,9 @@ exports.checkTestSchema = Joi.object({
     answers: Joi.array().items(Joi.number().required())
 })
 
-
+exports.changeStatusDarsSchema = Joi.object({
+    status: Joi.number().required()
+})
 
 
 

@@ -387,7 +387,8 @@ exports.getServices = async (req, res) => {
       .select("*")
       .orderBy("id", "desc");
     const project = await Project.query().select("*");
-    const data = [social_status, project];
+    const data = [social_status, project]
+
     return res.status(200).json({ success: true, data });
   } catch (e) {
     console.log(e);
@@ -396,12 +397,13 @@ exports.getServices = async (req, res) => {
 
 exports.checkStudent = async (req, res) => {
   try {
-    const student = await Student.query().where("code", req.body.student_code).first();
+    
+    const student = await Student.query().where("code", req.body.student_code).first()
     const group = await Group.query().where("id", req.body.group_id).first()
 
 
     if (!student) {
-      return res.status(200).json({ success: false, message: 1 });
+      return res.status(200).json({ success: false, message: 1 })
     }
 
     if (!group) {
