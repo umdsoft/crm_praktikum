@@ -5,6 +5,7 @@ const Test = require("../../controller/Test");
 
 router.get('/get/module/:module_id', authMiddleware, Test.getModuleTests);
 router.get('/get/:dars_id', authMiddleware, Test.getTests);
+router.get('/get/ids/:dars_id', authMiddleware, Test.getTestIds);
 router.get('/get/one/:test_id', authMiddleware, Test.getOneTest);
 router.delete('/delete/:test_id', authMiddleware, Test.deleteTest);
 

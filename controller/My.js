@@ -171,8 +171,10 @@ exports.getDarsById = async (req, res) => {
     const dars = await LessonDars.query().findById(dars_id);
     return res
       .status(200)
-      .json({ success: true, dars: dars, tests_count: tests.length });
+      .json({ success: true, dars: dars, tests_count: tests.length, test_open: openDars.test_open });
   } catch (error) {
     console.log(error);
   }
 };
+
+

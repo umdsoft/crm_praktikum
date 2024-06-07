@@ -17,6 +17,72 @@ const shuffleArray = (array) => {
   return array;
 };
 
+
+//for students 
+exports.getTestIds = async (req, res) => {
+  try {
+
+    // Decode the JWT token
+    const candidate = jwt.decode(req.headers.authorization.split(" ")[1]);
+
+    // Extract dars_id from request parameters and validate
+    const dars_id = parseInt(req.params.dars_id);
+    if (isNaN(dars_id)) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid ID",
+      });
+    }
+
+    // Execute the SQL query
+    const tests = await sql("test")
+      .select(
+        "test.id as test_id",
+        "lesson_dars_id as lesson_dars_id",
+        sql.raw("COALESCE(test_finish.id, NULL) as test_finish_id")
+      )
+      .leftJoin("test_finish", function() {
+        this.on("test.id", "=", "test_finish.test_id")
+          .andOn("test_finish.student_id", "=", candidate.user_id);
+      })
+      .where({
+        lesson_dars_id: dars_id,
+      })
+      .orderBy("test.id", "desc");
+
+      let title;
+      if (tests.length > 0) {
+        const lessonDars = await LessonDars.query().findById(tests[0].lesson_dars_id)
+        title = lessonDars?.name
+      }
+
+      const results = shuffleArray(tests)
+      const testIds = results.map((test, index) => {
+        return {
+          index: index + 1,
+          test_id: test.test_id,
+          test_finish_id: test.test_finish_id,
+        }
+      });
+
+
+    // Return the results in the response
+    return res.status(200).json({
+      success: true,
+      data: testIds,
+      title
+    });
+
+  } catch (err) {
+    console.log(err);
+    return res.status(500).json({
+      success: false,
+      message: "Server error",
+    });
+  }
+};
+
+
 exports.getTests = async (req, res) => {
   try {
     const dars_id = parseInt(req.params.dars_id);
@@ -173,6 +239,8 @@ exports.createTest = async (req, res) => {
 
 exports.getOneTest = async (req, res) => {
   try {
+    const candidate = jwt.decode(req.headers.authorization.split(" ")[1]);
+
     const test_id = parseInt(req.params.test_id);
     if (isNaN(test_id)) {
       return res.status(400).json({
@@ -191,7 +259,9 @@ exports.getOneTest = async (req, res) => {
         message: "Test not found",
       });
 
-      const testVariants = await TestVariants.query().where('test_id', test_id)
+      const finishedTest = await TestFinish.query().where('test_id', test_id).where('student_id', candidate.user_id).first()
+
+      const testVariants = await TestVariants.query().select('id', 'text', 'test_id').where('test_id', test_id)
       if (!testVariants)
       return res.status(400).json({
         success: false,
@@ -206,9 +276,10 @@ exports.getOneTest = async (req, res) => {
         created_at: test.created_at,
         status: test.status,
         variants: shuffleArray(testVariants),
+       
       };
 
-      return res.status(200).json({ success: true, test: result });
+      return res.status(200).json({ success: true, test: result,  finish: finishedTest ? finishedTest : null });
 
   } catch (error) {
     console.log(error);
