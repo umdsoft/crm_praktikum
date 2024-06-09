@@ -117,30 +117,41 @@ exports.getMyModules = async (req, res) => {
 
 exports.getMyLessonDars = async (req, res) => {
   try {
-    const module_id = parseInt(req.params.module_id);
     const group_id = parseInt(req.query.group_id);
+    const module_id = parseInt(req.query.module_id);
 
-    if (isNaN(module_id)) {
+    if (isNaN(group_id) || isNaN(module_id)) {
       return res.status(400).json({
         success: false,
         message: "Invalid ID",
       });
     }
 
-    const openLessons = await sql("lesson_open")
-      .select("lesson_open.*", "lesson_dars.name AS lesson_name")
-      .where("lesson_open.group_id", group_id)
-      .where("lesson_dars.module_id", module_id)
-      .leftJoin("lesson_dars", "lesson_open.lesson_dars_id", "lesson_dars.id");
+    const lessons = await sql("lesson_dars")
+      .select(
+        "lesson_dars.id AS id",
+        "lesson_dars.name as lesson_name",
+        "lesson_dars.description",
+        "lesson_dars.created",
+        "lesson_dars.module_id",
+        "lesson_dars.video_url",
+        "lesson_dars.text",
+        "lesson_dars.video_duration",
+        sql.raw("COALESCE(lesson_open.id, NULL) AS lesson_open_id"),
+        "lesson_open.test_status",
+      )
+      .leftJoin("lesson_open", function() {
+        this.on("lesson_dars.id", "=", "lesson_open.lesson_dars_id")
+          .on("lesson_open.group_id", "=", group_id);
+      })
+      .where("lesson_dars.module_id", module_id);
 
-
-    return res.status(200).json({ success: true, data: openLessons });
-
+    return res.status(200).json({ success: true, data: lessons });
   } catch (error) {
     console.log(error);
     return res.status(500).json({
       success: false,
-      message: "Internal Server Error",
+      message: "Server error",
     });
   }
 };
@@ -161,17 +172,19 @@ exports.getDarsById = async (req, res) => {
 
     const openDars = await LessonOpen.query().where("group_id", group_id).where("lesson_dars_id", dars_id).first();
 
+
     if (openDars.status === 0) return res.status(400).json({
       success: false,
       message: "block",
     });
 
-    const tests = await Test.query().where("lesson_dars_id", dars_id);
+    const tests = await Test.query().where("lesson_dars_id", dars_id)
 
-    const dars = await LessonDars.query().findById(dars_id);
+    const dars = await LessonDars.query().findById(dars_id)
     return res
       .status(200)
-      .json({ success: true, dars: dars, tests_count: tests.length, test_open: openDars.test_open });
+      .json({ success: true, dars: dars, tests_count: tests.length, test_status: openDars.test_status })
+
   } catch (error) {
     console.log(error);
   }

@@ -342,7 +342,7 @@ exports.checkTest = async (req, res) => {
 
     value.answers.forEach(async (item) => {
     const isExist = testVariants.find(variant => variant.id == item)
-        if (isExist) {
+        if (isExist && isExist.is_correct == 1 ) {
             result.score += 1
             result.corrects.push(isExist.id)
         }

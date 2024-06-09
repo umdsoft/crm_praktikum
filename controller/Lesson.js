@@ -8,6 +8,7 @@ const {
   createLDSchema,
   createFileSchema,
   changeStatusDarsSchema,
+  changeStatusTestSchema,
 } = require("../validators/lesson-validators.js");
 const jwt = require("jsonwebtoken");
 const Test = require("../models/Test.js");
@@ -96,6 +97,11 @@ exports.getAllLessonModule = async (req, res) => {
     }
 
     const lesson = await Lesson.query().findById(req.params.id);
+
+    if (!lesson)
+      return res
+        .status(404)
+        .json({ success: false, message: "Lesson not found" });
 
     const query = sql("lesson_module")
       .select(
@@ -331,40 +337,78 @@ exports.getLessonList = async (req, res) => {
       });
     }
 
-    const openLessons = await sql("lesson_open")
-      .select("lesson_open.*", "lesson_dars.name AS lesson_name")
-      .where("lesson_open.group_id", group_id)
-      .where("lesson_dars.module_id", module_id)
-      .leftJoin("lesson_dars", "lesson_open.lesson_dars_id", "lesson_dars.id");
+    const lessons = await sql("lesson_dars")
+      .select(
+        "lesson_dars.id AS id",
+        "lesson_dars.name as lesson_name",
+        "lesson_dars.description",
+        "lesson_dars.created",
+        "lesson_dars.module_id",
+        "lesson_dars.video_url",
+        "lesson_dars.text",
+        "lesson_dars.video_duration",
+        sql.raw("COALESCE(lesson_open.id, NULL) AS lesson_open_id"),
+        "lesson_open.test_status"
+      )
+      .leftJoin("lesson_open", function () {
+        this.on("lesson_dars.id", "=", "lesson_open.lesson_dars_id").on(
+          "lesson_open.group_id",
+          "=",
+          group_id
+        );
+      })
+      .where("lesson_dars.module_id", module_id);
 
-    return res.status(200).json({ success: true, data: openLessons });
+    return res.status(200).json({ success: true, data: lessons });
   } catch (error) {
     console.log(error);
+    return res.status(500).json({
+      success: false,
+      message: "Server error",
+    });
   }
 };
 
 exports.changeDarsStatus = async (req, res) => {
   try {
-    const open_lesson_id = parseInt(req.params.id);
-    if (isNaN(open_lesson_id)) {
+    const { error, value } = changeStatusDarsSchema.validate(req.body);
+    if (error)
+      return res
+        .status(400)
+        .json({ success: false, msg: error.details[0].message });
+
+    await LessonOpen.query().insert(value);
+
+    return res.status(200).json({ success: true });
+  } catch (error) {
+    console.log(error);
+  }
+};
+
+exports.changeTestStatus = async (req, res) => {
+  try {
+    const lesson_dars_id = parseInt(req.params.dars_id);
+    if (isNaN(lesson_dars_id)) {
       return res.status(400).json({
         success: false,
         message: "Invalid ID",
       });
-    } 
+    }
 
-    const currentDate = new Date();
+    const { error, value } = changeStatusTestSchema.validate(req.body);
+    if (error)
+      return res
+        .status(400)
+        .json({ success: false, msg: error.details[0].message });
 
-    const { error, value } = changeStatusDarsSchema.validate(req.body);
-    if (error) return res.status(400).json({ success: false, msg: error.details[0].message });
+    const nowDate = new Date();
+    const lessonDars = await LessonOpen.query()
+      .update({ test_status: value.status, test_open_date: nowDate })
+      .where("lesson_dars_id", lesson_dars_id)
+      .where("group_id", value.group_id)
+      .first();
 
-    await LessonOpen.query().update({
-      status: value.status,
-      open_date: currentDate
-    }).where("id", open_lesson_id)
-    
-    return res.status(200).json({ success: true });
-    
+    return res.status(200).json({ success: true, lessonDars });
   } catch (error) {
     console.log(error);
   }

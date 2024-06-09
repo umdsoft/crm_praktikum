@@ -31,9 +31,15 @@ exports.checkTestSchema = Joi.object({
 })
 
 exports.changeStatusDarsSchema = Joi.object({
-    status: Joi.number().required()
+    status: Joi.number().required(),
+    group_id: Joi.number().required(),
+    lesson_dars_id: Joi.number().required()
 })
 
+exports.changeStatusTestSchema = Joi.object({
+    status: Joi.number().required(),
+    group_id: Joi.number().required()
+})
 
 
 
