@@ -12,5 +12,6 @@ app.use("/task", require("./router/task"))
 app.use("/test", require("./router/test"))
 
 app.use("/my", require("./router/my"));
+app.use("/statistic", require("./router/statistic"));
 
 module.exports = app;
