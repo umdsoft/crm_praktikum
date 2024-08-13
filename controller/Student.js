@@ -75,7 +75,7 @@ exports.createStudent = async (req, res) => {
 
 exports.getAll = async (req, res) => {
   const limit = req.query.limit || 15;
-  const skip = (req.query.page - 1) * limit;
+  const skip = req.query.skip;
   let allStudent;
 
   const studentsCount = await Student.query().count("id as count").first();
@@ -90,7 +90,6 @@ exports.getAll = async (req, res) => {
         );
       })
       .select("*")
-
       .orderBy("id", "desc")
       .limit(limit)
       .offset(skip);

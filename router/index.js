@@ -13,5 +13,6 @@ app.use("/test", require("./router/test"))
 
 app.use("/my", require("./router/my"));
 app.use("/statistic", require("./router/statistic"));
+app.use('/kpi', require('./router/kpi'));
 
 module.exports = app;
