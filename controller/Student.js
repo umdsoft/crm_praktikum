@@ -354,9 +354,10 @@ exports.editStudent = async (req, res) => {
 exports.getStudentByCode = async (req, res) => {
   try {
     const student = await Student.query()
-      .where("code", req.params.code)
-      .first();
-
+      .findOne("code", req.params.code)
+    if (!student) {
+      return res.status(200).json({ success: false, msg: 'u-n' })
+    }
     return res.status(200).json({ success: true, data: student });
   } catch (error) {
     console.log(error);
@@ -513,14 +514,14 @@ exports.getGroupLessonsWithStatus = async (req, res) => {
     const { group_id } = req.params;
     if (isNaN(group_id))
       return res.status(400).json({ success: false, msg: "Invalid group_id" })
-  
-    const groupStudents = await some("lesson").select(
-      "lesson.*",    
-    )
-     .orderBy("id", "asc")
 
-     return res.status(200).json({ success: true, data: groupStudents });
-    
+    const groupStudents = await some("lesson").select(
+      "lesson.*",
+    )
+      .orderBy("id", "asc")
+
+    return res.status(200).json({ success: true, data: groupStudents });
+
   } catch (error) {
     console.log(error);
   }

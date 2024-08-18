@@ -11,7 +11,7 @@ const Project = require("../models/Project");
 const Users = require("../models/User");
 const sql = require("../setting/mDb");
 const jwt = require("jsonwebtoken");
-const User = require("../models/User");
+
 const StudentCheck = require("../models/StudentCheck");
 
 exports.create = async (req, res) => {
@@ -47,7 +47,8 @@ exports.getDate = async (req, res) => {
     const room = await Room.query().select("*");
     const day = await Day.query().select("*");
     const time = await Time.query().select("*");
-    return res.status(200).json({ success: true, direction, room, day, time });
+    const teacher = await Users.query().where('role',8).select('id','name')
+    return res.status(200).json({ success: true, direction, room, day, time,teacher });
   } catch (e) {
     console.log(e);
   }

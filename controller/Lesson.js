@@ -4,6 +4,7 @@ const LessonDars = require("../models/LessonDars");
 const LessonDarsFiles = require("../models/LessonDarsFile.js");
 const LessonModule = require("../models/LessonModule");
 const sql = require("../setting/mDb.js");
+const some = require("../setting/mDb");
 const {
   createLDSchema,
   createFileSchema,
@@ -21,7 +22,7 @@ exports.createLesson = async (req, res) => {
       name: req.body.name,
       mentor_id: req.body.mentor_id,
       direction_id: req.body.direction_id,
-      lesson_type: req.body.lesson_type,
+      lesson_type: 1,
       lesson_status: 1,
     });
     return res.status(201).json({ success: true });
@@ -52,7 +53,9 @@ exports.getAllLesson = async (req, res) => {
     const mentor_id = candidate.user_id;
 
     const user = await User.query().findById(mentor_id);
-
+    const total = await some("lesson")
+      .count("id as count")
+      .first();
     const query = sql("lesson")
       .select(
         "lesson.*",
@@ -76,8 +79,9 @@ exports.getAllLesson = async (req, res) => {
 
     const lessons = await query;
 
-    return res.status(200).json({ success: true, data: lessons });
+    return res.status(200).json({ success: true, data: lessons, total: total.count });
   } catch (e) {
+
     return res.status(500).json({
       success: false,
       message: "Internal Server Error",
@@ -88,9 +92,7 @@ exports.getAllLesson = async (req, res) => {
 exports.getAllLessonModule = async (req, res) => {
   try {
     const limit = req.query.limit || 15;
-    const page = req.query.page || 1;
-    const skip = (page - 1) * limit;
-
+    const skip = req.query.skip;
     if (isNaN(parseInt(req.params.id))) {
       return res.status(400).json({ success: false, message: "Invalid ID" });
     }

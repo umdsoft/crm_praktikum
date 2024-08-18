@@ -54,7 +54,8 @@ exports.login = async (req, res) => {
     //     .status(400)
     //     .json({ success: false, msg: error.details[0].message });
     // }
-    const user = await Users.query().where("phone", req.body.phone).first();
+    const phone = req.body.phone.replace(/ /g,'')
+    const user = await Users.query().where("phone", phone).first();
     if (!user) {
       return res
         .status(404)
