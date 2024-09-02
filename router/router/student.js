@@ -14,6 +14,7 @@ router.get("/get-me", authMiddleware, authMiddleware, Student.getMe);
 router.get("/payment", authMiddleware, Student.getPayment);
 
 router.get("/get-pay/:id", authMiddleware, Student.getPay);
+router.get('/get-student-pay',authMiddleware, Student.getStudentPay)
 router.post("/pay/:id", authMiddleware, Student.createPay);
 router.get("/by-code/:code", authMiddleware, Student.getStudentByCode)
 

@@ -283,6 +283,17 @@ exports.getPayment = async (req, res) => {
   }
 };
 
+exports.getStudentPay = async (req, res) => {
+  try {
+    const pay = await GroupStudentPay.query()
+      .where("group_id", req.query.group_id)
+      .andWhere('student_id', req.query.student_id)
+    return res.status(200).json({ success: true, data: pay });
+  } catch (e) {
+    console.log(e);
+  }
+};
+
 exports.getPay = async (req, res) => {
   try {
     const pay = await GroupStudentPay.query()

@@ -47,8 +47,8 @@ exports.getDate = async (req, res) => {
     const room = await Room.query().select("*");
     const day = await Day.query().select("*");
     const time = await Time.query().select("*");
-    const teacher = await Users.query().where('role',8).select('id','name')
-    return res.status(200).json({ success: true, direction, room, day, time,teacher });
+    const teacher = await Users.query().where('role', 8).select('id', 'name')
+    return res.status(200).json({ success: true, direction, room, day, time, teacher });
   } catch (e) {
     console.log(e);
   }
@@ -191,17 +191,22 @@ exports.createGroupStudent = async (req, res) => {
         });
       });
     } else if (group.status === 0) {
-      const gs = await GroupStudent.query().insert({
-        student_id: req.body.student_id,
-        group_id: req.body.group_id,
-        contract: contract_number,
-        status: 0,
-        project_id: req.body.project_id,
-        amount: req.body.amount,
-        social_status_id: req.body.social_status_id,
-      });
+      const con = await GroupStudent.query().where('student_id', req.body.student_id).andWhere('group_id', req.body.group_id).first()
+      if (!con) {
+        await GroupStudent.query().insert({
+          student_id: req.body.student_id,
+          group_id: req.body.group_id,
+          contract: contract_number,
+          status: 0,
+          project_id: req.body.project_id,
+          amount: req.body.amount,
+          social_status_id: req.body.social_status_id,
+        });
+        return res.status(201).json({ success: true });
+      } else {
+        return res.status(200).json({ success: false, msg: 'user-bor' })
+      }
     }
-
     return res.status(201).json({ success: true });
   } catch (e) {
     console.log(e);
@@ -246,9 +251,7 @@ exports.startGroup = async (req, res) => {
 
     await Group.query().where("id", req.body.group_id).update({
       status: 1,
-      main_mentor: req.body.main_mentor,
-      second_mentor: req.body.second_mentor,
-      english_mentor: req.body.english_mentor,
+      main_mentor: req.body.mentor,
       start_date: startDate,
     });
 
@@ -260,7 +263,12 @@ exports.startGroup = async (req, res) => {
 
 exports.getOneCourseData = async (req, res) => {
   try {
-    const group = await Group.query().where("id", req.params.id).first();
+    const group = await Group.query()
+    .select('groups.id as id','direction.name as name','groups.code','groups.status')
+      .leftJoin("direction", "groups.direction_id", "direction.id")
+      .where("groups.id", req.params.id)
+      .first();
+      console.log(group)
     const countGroupStudent = await GroupStudent.query()
       .where("group_id", req.params.id)
       .count("* as count");
@@ -277,6 +285,7 @@ exports.getOneCourseData = async (req, res) => {
         "student.code as student_code",
         "group_student.contract as contract",
         "project.name as project",
+        "group_student.status as status",
         "student.*"
       )
       .leftJoin("student", "group_student.student_id", "student.id")
@@ -284,13 +293,14 @@ exports.getOneCourseData = async (req, res) => {
       .where("group_student.group_id", req.params.id);
 
     const payment = await GroupStudentPay.knex().raw(`
-    SELECT gsp.id, s.full_name,gsp.payment_date,gsp.amount, 
+    SELECT gsp.id, s.full_name,gsp.payment_date,gsp.amount,  gsp.student_id as student_id,
     (SELECT SUM(ggsp.amount) as fulls_pay FROM group_student_pay ggsp where ggsp.gs_id = gsp.gs_id) as full_pay,
     (SELECT SUM(ggsp.amount) as qarzs FROM group_student_pay ggsp where ggsp.gs_id = gsp.gs_id and YEAR(ggsp.payment_date) <= YEAR(CURRENT_DATE()) and MONTH(ggsp.payment_date) <= MONTH(CURRENT_DATE())) as qarz
     FROM group_student_pay gsp
     left join student s on gsp.student_id = s.id
     WHERE gsp.group_id = ${req.params.id} and YEAR(gsp.payment_date) = YEAR(CURRENT_DATE()) and MONTH(gsp.payment_date) = MONTH(CURRENT_DATE());
       `);
+      //  and YEAR(gsp.payment_date) = YEAR(CURRENT_DATE()) and MONTH(gsp.payment_date) = MONTH(CURRENT_DATE())
     return res.status(200).json({
       success: true,
       group,
@@ -348,7 +358,7 @@ exports.checkStudent = async (req, res) => {
 
 exports.getAllMentor = async (req, res) => {
   try {
-    const mentor = await User.query().where("role", 8).select("id", "name");
+    const mentor = await Users.query().where("role", 8).select("id", "name");
     return res.status(200).json({ success: true, data: mentor });
   } catch (e) {
     console.log(e);
