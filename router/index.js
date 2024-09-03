@@ -10,7 +10,7 @@ app.use("/lead", require("./router/lead"))
 app.use("/reklama", require("./router/reklama"))
 app.use("/task", require("./router/task"))
 app.use("/test", require("./router/test"))
-
+app.use('/payment', require('./router/payment'))
 app.use("/my", require("./router/my"));
 app.use("/statistic", require("./router/statistic"));
 app.use('/kpi', require('./router/kpi'));

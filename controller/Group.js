@@ -94,7 +94,13 @@ exports.getDate = async (req, res) => {
 // LIMIT ${limit} OFFSET ${skip};
 //     `);
 // }
-
+exports.deleteStudentGroup = async (req, res) => {
+  try {
+    
+  } catch (e) {
+    console.log(e)
+  }
+}
 exports.getAllGroup = async (req, res) => {
   try {
     const limit = req.query.limit || 15;
@@ -264,11 +270,11 @@ exports.startGroup = async (req, res) => {
 exports.getOneCourseData = async (req, res) => {
   try {
     const group = await Group.query()
-    .select('groups.id as id','direction.name as name','groups.code','groups.status')
+      .select('groups.id as id', 'direction.name as name', 'groups.code', 'groups.status')
       .leftJoin("direction", "groups.direction_id", "direction.id")
       .where("groups.id", req.params.id)
       .first();
-      console.log(group)
+    console.log(group)
     const countGroupStudent = await GroupStudent.query()
       .where("group_id", req.params.id)
       .count("* as count");
@@ -300,7 +306,7 @@ exports.getOneCourseData = async (req, res) => {
     left join student s on gsp.student_id = s.id
     WHERE gsp.group_id = ${req.params.id} and YEAR(gsp.payment_date) = YEAR(CURRENT_DATE()) and MONTH(gsp.payment_date) = MONTH(CURRENT_DATE());
       `);
-      //  and YEAR(gsp.payment_date) = YEAR(CURRENT_DATE()) and MONTH(gsp.payment_date) = MONTH(CURRENT_DATE())
+    //  and YEAR(gsp.payment_date) = YEAR(CURRENT_DATE()) and MONTH(gsp.payment_date) = MONTH(CURRENT_DATE())
     return res.status(200).json({
       success: true,
       group,

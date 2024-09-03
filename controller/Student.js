@@ -7,8 +7,6 @@ const secret = require("../setting/setting").jwt;
 const Token = require("../models/Token");
 const GroupStudentPay = require("../models/GroupStudentPay");
 const { signUpSchema } = require("../helper/validator");
-const { generateRandomString } = require("../setting/randomString");
-const PayType = require("../models/PayType");
 const some = require("../setting/mDb");
 
 const updateTokens = (user_id) => {
@@ -305,34 +303,9 @@ exports.getPay = async (req, res) => {
   }
 };
 
-exports.createPay = async (req, res) => {
-  try {
-    const currentDate = new Date();
-    const formattedTime = currentDate.toISOString().slice(11, 19);
 
-    await GroupStudentPay.query()
-      .where("id", req.params.id)
-      .update({
-        status: 1,
-        paid_time: formattedTime,
-        paid_date: req.body.date,
-        pay_type: req.body.pay_type,
-        code: generateRandomString(6),
-      });
-    return res.status(201).json({ success: true });
-  } catch (e) {
-    console.log(e);
-  }
-};
 
-exports.getPayType = async (req, res) => {
-  try {
-    const type = await PayType.query().select("*");
-    return res.status(200).json({ success: true, data: type });
-  } catch (e) {
-    console.log(e);
-  }
-};
+
 
 exports.getStudentDetails = async (req, res) => {
   try {
