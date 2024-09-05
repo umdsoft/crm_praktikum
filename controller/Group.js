@@ -264,7 +264,15 @@ exports.startGroup = async (req, res) => {
     console.log(e);
   }
 };
-
+exports.endGroup = async (req, res) => {
+  try {
+    await Group.query().where('id', req.params.id).update({ status: 2 })
+    await GroupStudent.query().where('group_id', req.params.id).update({ status: 3 })
+    return res.status(200).json({ success: true })
+  } catch (e) {
+    console.log(e)
+  }
+}
 exports.getOneCourseData = async (req, res) => {
   try {
     const lessonGroup = await GroupLesson.query().where('group_id', req.params.id).andWhere('lesson_status', 0).first()
@@ -273,7 +281,7 @@ exports.getOneCourseData = async (req, res) => {
       .leftJoin("direction", "groups.direction_id", "direction.id")
       .where("groups.id", req.params.id)
       .first();
-    console.log(group)
+
     const countGroupStudent = await GroupStudent.query()
       .where("group_id", req.params.id)
       .count("* as count");
@@ -291,6 +299,7 @@ exports.getOneCourseData = async (req, res) => {
         "group_student.contract as contract",
         "project.name as project",
         "group_student.status as status",
+        "group_student.id as gid",
         "student.*"
       )
       .leftJoin("student", "group_student.student_id", "student.id")
@@ -663,6 +672,35 @@ exports.startLesson = async (req, res) => {
       lesson_status: 0
     })
     return res.status(201).json({ success: true })
+  }
+  catch (e) {
+    console.log(e)
+  }
+}
+exports.endLesson = async (req, res) => {
+  await GroupLesson.query().where('group_id', req.params.id).update({
+    lesson_end_time: new Date(),
+    lesson_status: 1
+  })
+  return res.status(200).json({ success: true })
+}
+
+exports.deleteStudentGroup = async (req, res) => {
+  try {
+    const con = await GroupStudent.query().findOne('id', req.params.id)
+    const group = await Group.query().findOne('id', con.group_id)
+    if (group.status == 0) {
+      await GroupStudent.query().where('id', req.params.id).delete()
+      return res.status(200).json({ success: true })
+    }
+    await GroupStudent.query().where('id', req.params.id).update({ status: 2 })
+    const pays = await GroupStudentPay.query().where('gs_id', req.params.id).andWhere('status', 0)
+    pays.forEach(async (item) => {
+      if (new Date(item.payment_date) > new Date()) {
+        await GroupStudentPay.query().where('id', item.id).update({ status: 2 })
+      }
+    })
+    return res.status(200).json({ success: true })
   }
   catch (e) {
     console.log(e)
