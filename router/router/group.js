@@ -20,5 +20,7 @@ router.put("/change-status/:group_id", authMiddleware, Group.changeStatus)
 router.get("/details/:id", authMiddleware, Group.getGroupDetails)
 router.get("/group-checkup/:id", authMiddleware, Group.getCheckUpGroup)
 
+router.post('/start-lesson', authMiddleware, Group.startLesson)
+
 
 module.exports = router;

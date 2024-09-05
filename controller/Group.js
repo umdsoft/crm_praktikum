@@ -11,7 +11,7 @@ const Project = require("../models/Project");
 const Users = require("../models/User");
 const sql = require("../setting/mDb");
 const jwt = require("jsonwebtoken");
-
+const GroupLesson = require('../models/GroupLesson')
 const StudentCheck = require("../models/StudentCheck");
 
 exports.create = async (req, res) => {
@@ -96,7 +96,7 @@ exports.getDate = async (req, res) => {
 // }
 exports.deleteStudentGroup = async (req, res) => {
   try {
-    
+
   } catch (e) {
     console.log(e)
   }
@@ -115,8 +115,6 @@ exports.getAllGroup = async (req, res) => {
         "groups.status as status",
         "groups.duration as duration",
         "groups.main_mentor as main_mentor_id",
-        "groups.second_mentor as second_mentor_id",
-        "groups.english_mentor as english_mentor_id",
         "groups.start_date as start_date",
         sql.raw("COUNT(group_student.id) as student_count"), // Count the number of students for each group
         "direction.name as direction_name",
@@ -269,6 +267,7 @@ exports.startGroup = async (req, res) => {
 
 exports.getOneCourseData = async (req, res) => {
   try {
+    const lessonGroup = await GroupLesson.query().where('group_id', req.params.id).andWhere('lesson_status', 0).first()
     const group = await Group.query()
       .select('groups.id as id', 'direction.name as name', 'groups.code', 'groups.status')
       .leftJoin("direction", "groups.direction_id", "direction.id")
@@ -313,6 +312,7 @@ exports.getOneCourseData = async (req, res) => {
       countGroupStudent,
       groupStudents: groupStudents,
       payment: payment[0],
+      lessonGroup: lessonGroup
     });
   } catch (e) {
     console.log(e);
@@ -644,3 +644,27 @@ exports.changeStatus = async (req, res) => {
     console.log(error);
   }
 };
+
+exports.startLesson = async (req, res) => {
+  try {
+    const candidate = jwt.decode(req.headers.authorization.split(" ")[1]);
+
+    const lessonGroup = await GroupLesson.query().where('group_id', req.body.group_id).andWhere('lesson_status', 0).first()
+    if (lessonGroup != null) {
+      console.log(1)
+      return res.status(200).json({ success: false, err: 'lesson-started' })
+    }
+
+    await GroupLesson.query().insert({
+      mentor_id: candidate.user_id,
+      group_id: req.body.group_id,
+      lesson_start_time: new Date(),
+      created: new Date(),
+      lesson_status: 0
+    })
+    return res.status(201).json({ success: true })
+  }
+  catch (e) {
+    console.log(e)
+  }
+}

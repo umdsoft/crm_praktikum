@@ -30,7 +30,8 @@ exports.getAllPayment = async (req, res) => {
             s.phone,
             g.code as gcode,
             g.id as group_id,
-            s.id as student_id
+            s.id as student_id,
+            g.main_mentor
         FROM 
         group_student_pay gsp 
         left join student s on gsp.student_id = s.id
@@ -77,7 +78,8 @@ exports.getOneStudentPay = async (req, res) => {
             s.phone,
             g.code as gcode,
             g.id as group_id,
-            s.id as student_id
+            s.id as student_id,
+            g.main_mentor
         FROM 
         group_student_pay gsp 
         left join student s on gsp.student_id = s.id
@@ -98,6 +100,7 @@ exports.createPay = async (req, res) => {
             .where("id", req.params.id)
             .update({
                 status: 1,
+                teacher_id: req.body.teacher_id,
                 paid_time: formattedTime,
                 paid_date: currentDate,
                 pay_type: req.body.pay_type,
@@ -119,7 +122,8 @@ exports.getOnePaymentDetail = async (req, res) => {
                 s.phone,
                 gs.contract,
                 g.code,
-                gsp.amount
+                gsp.amount,
+                g.main_mentor
             FROM group_student_pay gsp
             left join student s on gsp.student_id = s.id
             left join groups g on gsp.group_id = g.id
@@ -140,3 +144,25 @@ exports.getPayType = async (req, res) => {
         console.log(e);
     }
 };
+
+exports.salary_report = async (req, res) => {
+    try {
+        const knex = await StudentPay.knex()
+        const data = await knex.raw(`
+            SELECT 
+                u.name,
+                u.phone,
+                SUM(gsp.amount) as all_pay,
+                (SUM(gsp.amount) * (u.salary / 100) ) as salary,
+                ((SUM(gsp.amount) * (u.salary / 100)) * 0.075) as soliq
+            FROM group_student_pay gsp
+            left join user u on gsp.teacher_id = u.id 
+            where gsp.status = 1 and YEAR(gsp.paid_date)=YEAR(CURDATE()) and MONTH(gsp.paid_date) = MONTH(CURDATE())
+            GROUP by gsp.teacher_id;    
+        `)
+        return res.status(200).json({ success: true, data: data[0] })
+    }
+    catch (e) {
+        console.log(e)
+    }
+}
