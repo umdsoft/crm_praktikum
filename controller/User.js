@@ -77,14 +77,17 @@ exports.login = async (req, res) => {
 };
 exports.refreshToken = async (req, res) => {
   try {
-    let payload = jwt.verify(req.body.refreshToken, secret);
+    console.log(req.body)
+    let payload = jwt.verify(req.body.accessToken, secret);
     if (payload.type !== "refresh") {
       return res.status(400).json({ success: false, msg: "invalid-token" });
     }
   } catch (e) {
     if (e instanceof jwt.TokenExpiredError) {
+      console.log(1)
       return res.status(400).json({ success: false, msg: "token-expiried" });
     } else if (e instanceof jwt.JsonWebTokenError) {
+      console.log(2)
       return res.status(400).json({ success: false, msg: "invalid-token" });
     }
   }
@@ -103,7 +106,7 @@ exports.refreshToken = async (req, res) => {
 exports.getAllUsers = async (req, res) => {
   /* #swagger.security = [{
             "apiKeyAuth": []
-    }] */
+    }] */ 
   const limit = req.query.limit || 10;
   const skip = (req.query.page - 1) * limit;
   const users = await Users.query()

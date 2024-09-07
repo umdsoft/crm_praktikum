@@ -54,46 +54,6 @@ exports.getDate = async (req, res) => {
   }
 };
 
-// let allGroup;
-// const knex = await Group.knex();
-// if (req.query.search) {
-//   allGroup = await Group.query()
-//     .where("code", "like", `%${req.query.search}%`)
-//     .select("*")
-//     .orderBy("id", "desc")
-//     .limit(limit)
-//     .offset(skip);
-// } else {
-//   allGroup = await knex.raw(`
-//     SELECT
-//     g.id AS id,
-//     g.code AS code,
-//     g.created AS created,
-//     g.status AS status,
-//     direc.name AS direction_name,
-//     day.name AS day,
-//     rom.name AS room,
-//     g.start_date,
-//     time.name AS time ,
-//     (SELECT count(*) from group_student gs WHERE gs.group_id = g.id) as student_count
-// FROM
-//     groups g
-// LEFT JOIN
-//     direction direc
-//         ON direc.id = g.direction_id
-// LEFT JOIN
-//     lesson_day day
-//         ON day.id = g.day
-// LEFT JOIN
-//     room rom
-//         ON rom.id = g.room_id
-// LEFT JOIN
-//     lesson_time time
-//         ON time.id = g.time
-// ORDER BY g.status
-// LIMIT ${limit} OFFSET ${skip};
-//     `);
-// }
 exports.deleteStudentGroup = async (req, res) => {
   try {
 
@@ -219,7 +179,8 @@ exports.createGroupStudent = async (req, res) => {
 
 exports.startGroup = async (req, res) => {
   try {
-    const group = await Group.query().where("id", req.body.group_id).first();
+    console.log(req.body)
+    const group = await Group.query().findOne("id", req.body.group_id)
     const startDate = new Date(req.body.start_date);
 
     if (!group) {
@@ -285,12 +246,6 @@ exports.getOneCourseData = async (req, res) => {
     const countGroupStudent = await GroupStudent.query()
       .where("group_id", req.params.id)
       .count("* as count");
-    // const groupStudents = await GroupStudent.knex()
-    //   .raw(`SELECT gs.id,s.full_name, s.phone,gs.contract, p.name as project,gs.status,s.code
-    // FROM group_student gs
-    // LEFT JOIN student as s on gs.student_id = s.id
-    // left join project as p on gs.project_id = p.id
-    // WHERE gs.group_id = ${req.params.id};`);
 
     const groupStudents = await sql("group_student")
       .select(
@@ -304,7 +259,8 @@ exports.getOneCourseData = async (req, res) => {
       )
       .leftJoin("student", "group_student.student_id", "student.id")
       .leftJoin("project", "group_student.project_id", "project.id")
-      .where("group_student.group_id", req.params.id);
+      .where("group_student.group_id", req.params.id)
+      .andWhere('group_student.status', 1);
 
     const payment = await GroupStudentPay.knex().raw(`
     SELECT gsp.id, s.full_name,gsp.payment_date,gsp.amount,  gsp.student_id as student_id,
@@ -481,30 +437,19 @@ exports.getGroupStudents = async (req, res) => {
 
 exports.postCheckStudent = async (req, res) => {
   try {
-    const { group_id, data } = req.body;
 
-    if (!group_id) {
-      return res
-        .status(400)
-        .json({ success: false, message: "Group ID not found" });
-    }
-
-    if (!data) {
-      return res
-        .status(400)
-        .json({ success: false, message: "Data not found" });
-    }
-
+    // console.log(req.body)
+    const data = req.body.data
     data.forEach(async (item) => {
       try {
         await StudentCheck.query().insert({
-          student_id: item.id,
-          group_id: group_id,
+          student_id: item.student_id,
+          group_id: item.group_id,
           status: item.isCheck ? 1 : 0,
           reason: item.reason,
           created: new Date(),
-          gs_id: null,
-          gl_id: null,
+          gs_id: item.gsid,
+          gl_id: item.gl_id,
         });
       } catch (error) {
         console.log(error);
