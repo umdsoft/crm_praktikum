@@ -34,6 +34,6 @@ app.use("/images", express.static(path.join(__dirname, "images")));
 app.use("/api", require("./router/index"));
 
 
-  app.listen(3111, () => {
+  app.listen(3001, () => {
     console.log(`Server 3111 is running`);
   });
