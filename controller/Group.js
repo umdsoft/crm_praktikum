@@ -264,7 +264,7 @@ exports.getOneCourseData = async (req, res) => {
       .leftJoin("student", "group_student.student_id", "student.id")
       .leftJoin("project", "group_student.project_id", "project.id")
       .where("group_student.group_id", req.params.id)
-      .andWhere('group_student.status', 1);
+  
 
     const payment = await GroupStudentPay.knex().raw(`
     SELECT gsp.id, s.full_name,gsp.payment_date,gsp.amount,  gsp.student_id as student_id,
