@@ -190,7 +190,9 @@ exports.startGroup = async (req, res) => {
         .status(400)
         .json({ success: false, message: "Group not found" });
     }
-
+    if (group.status == 1) {
+      return res.status(200).json({ success: false, msg: 'group-stared' })
+    }
     if (!group.duration) {
       return res.status(400).json({ success: false, message: "duration-null" });
     }
@@ -264,7 +266,7 @@ exports.getOneCourseData = async (req, res) => {
       .leftJoin("student", "group_student.student_id", "student.id")
       .leftJoin("project", "group_student.project_id", "project.id")
       .where("group_student.group_id", req.params.id)
-  
+
 
     const payment = await GroupStudentPay.knex().raw(`
     SELECT gsp.id, s.full_name,gsp.payment_date,gsp.amount,  gsp.student_id as student_id,
