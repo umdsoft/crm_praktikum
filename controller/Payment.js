@@ -104,7 +104,7 @@ exports.createPay = async (req, res) => {
                 paid_time: formattedTime,
                 paid_date: currentDate,
                 pay_type: req.body.pay_type,
-                code: generateRandomString(8),
+                // code: generateRandomString(8),
             });
         return res.status(201).json({ success: true });
     } catch (e) {

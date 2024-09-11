@@ -13,6 +13,8 @@ const sql = require("../setting/mDb");
 const jwt = require("jsonwebtoken");
 const GroupLesson = require('../models/GroupLesson')
 const StudentCheck = require("../models/StudentCheck");
+// const generateUniqueRandomNumber = require('../setting/generatePayCode')
+
 
 exports.create = async (req, res) => {
   try {
@@ -200,11 +202,13 @@ exports.startGroup = async (req, res) => {
     groupUsers.forEach(async (item) => {
       for (let i = 0; i < group.duration; i++) {
         const currentDate = new Date(req.body.start_date);
+        const code = Math.floor(100000 + Math.random() * 900000);
         currentDate.setDate(currentDate.getDate() + 5);
         currentDate.setMonth(currentDate.getMonth() + i);
         await GroupStudentPay.query().insert({
           gs_id: item.id,
           amount: item.amount,
+          code,
           status: 0,
           group_id: item.group_id,
           payment_date: currentDate,
