@@ -102,7 +102,7 @@ exports.createPay = async (req, res) => {
                 status: 1,
                 teacher_id: req.body.teacher_id,
                 paid_time: formattedTime,
-                paid_date: currentDate,
+                paid_date: req.body.pay_data,
                 pay_type: req.body.pay_type,
                 // code: generateRandomString(8),
             });
