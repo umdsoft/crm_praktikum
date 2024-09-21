@@ -11,10 +11,10 @@ const Project = require("../models/Project");
 const Users = require("../models/User");
 const sql = require("../setting/mDb");
 const jwt = require("jsonwebtoken");
-const GroupLesson = require('../models/GroupLesson')
+const GroupLesson = require("../models/GroupLesson");
 const StudentCheck = require("../models/StudentCheck");
+const { generateUUID } = require("../setting/randomString");
 // const generateUniqueRandomNumber = require('../setting/generatePayCode')
-
 
 exports.create = async (req, res) => {
   try {
@@ -49,8 +49,10 @@ exports.getDate = async (req, res) => {
     const room = await Room.query().select("*");
     const day = await Day.query().select("*");
     const time = await Time.query().select("*");
-    const teacher = await Users.query().where('role', 8).select('id', 'name')
-    return res.status(200).json({ success: true, direction, room, day, time, teacher });
+    const teacher = await Users.query().where("role", 8).select("id", "name");
+    return res
+      .status(200)
+      .json({ success: true, direction, room, day, time, teacher });
   } catch (e) {
     console.log(e);
   }
@@ -58,11 +60,10 @@ exports.getDate = async (req, res) => {
 
 exports.deleteStudentGroup = async (req, res) => {
   try {
-
   } catch (e) {
-    console.log(e)
+    console.log(e);
   }
-}
+};
 exports.getAllGroup = async (req, res) => {
   try {
     const limit = req.query.limit || 15;
@@ -157,7 +158,10 @@ exports.createGroupStudent = async (req, res) => {
         });
       });
     } else if (group.status === 0) {
-      const con = await GroupStudent.query().where('student_id', req.body.student_id).andWhere('group_id', req.body.group_id).first()
+      const con = await GroupStudent.query()
+        .where("student_id", req.body.student_id)
+        .andWhere("group_id", req.body.group_id)
+        .first();
       if (!con) {
         await GroupStudent.query().insert({
           student_id: req.body.student_id,
@@ -170,7 +174,7 @@ exports.createGroupStudent = async (req, res) => {
         });
         return res.status(201).json({ success: true });
       } else {
-        return res.status(200).json({ success: false, msg: 'user-bor' })
+        return res.status(200).json({ success: false, msg: "user-bor" });
       }
     }
     return res.status(201).json({ success: true });
@@ -181,8 +185,8 @@ exports.createGroupStudent = async (req, res) => {
 
 exports.startGroup = async (req, res) => {
   try {
-    console.log(req.body)
-    const group = await Group.query().findOne("id", req.body.group_id)
+    console.log(req.body);
+    const group = await Group.query().findOne("id", req.body.group_id);
     const startDate = new Date(req.body.start_date);
 
     if (!group) {
@@ -191,7 +195,7 @@ exports.startGroup = async (req, res) => {
         .json({ success: false, message: "Group not found" });
     }
     if (group.status == 1) {
-      return res.status(200).json({ success: false, msg: 'group-stared' })
+      return res.status(200).json({ success: false, msg: "group-stared" });
     }
     if (!group.duration) {
       return res.status(400).json({ success: false, message: "duration-null" });
@@ -233,18 +237,36 @@ exports.startGroup = async (req, res) => {
 };
 exports.endGroup = async (req, res) => {
   try {
-    await Group.query().where('id', req.params.id).update({ status: 2 })
-    await GroupStudent.query().where('group_id', req.params.id).update({ status: 3 })
-    return res.status(200).json({ success: true })
+    await Group.query().where("id", req.params.id).update({ status: 2 });
+    const gsp = await GroupStudent.query().where("group_id", req.params.id);
+    gsp.forEach(async (item) => {
+      await GroupStudent.query()
+        .where("id", item.id)
+        .update({
+          status: 3,
+          cert_code: generateUUID(),
+          cert_date: new Date(),
+        });
+    });
+
+    return res.status(200).json({ success: true });
   } catch (e) {
-    console.log(e)
+    console.log(e);
   }
-}
+};
 exports.getOneCourseData = async (req, res) => {
   try {
-    const lessonGroup = await GroupLesson.query().where('group_id', req.params.id).andWhere('lesson_status', 0).first()
+    const lessonGroup = await GroupLesson.query()
+      .where("group_id", req.params.id)
+      .andWhere("lesson_status", 0)
+      .first();
     const group = await Group.query()
-      .select('groups.id as id', 'direction.name as name', 'groups.code', 'groups.status')
+      .select(
+        "groups.id as id",
+        "direction.name as name",
+        "groups.code",
+        "groups.status"
+      )
       .leftJoin("direction", "groups.direction_id", "direction.id")
       .where("groups.id", req.params.id)
       .first();
@@ -261,12 +283,12 @@ exports.getOneCourseData = async (req, res) => {
         "project.name as project",
         "group_student.status as status",
         "group_student.id as gid",
-        "student.*"
+        "student.*",
+        "group_student.cert_code"
       )
       .leftJoin("student", "group_student.student_id", "student.id")
       .leftJoin("project", "group_student.project_id", "project.id")
-      .where("group_student.group_id", req.params.id)
-
+      .where("group_student.group_id", req.params.id);
 
     const payment = await GroupStudentPay.knex().raw(`
     SELECT gsp.id, s.full_name,gsp.payment_date,gsp.amount,  gsp.student_id as student_id,
@@ -283,7 +305,7 @@ exports.getOneCourseData = async (req, res) => {
       countGroupStudent,
       groupStudents: groupStudents,
       payment: payment[0],
-      lessonGroup: lessonGroup
+      lessonGroup: lessonGroup,
     });
   } catch (e) {
     console.log(e);
@@ -443,9 +465,8 @@ exports.getGroupStudents = async (req, res) => {
 
 exports.postCheckStudent = async (req, res) => {
   try {
-
     // console.log(req.body)
-    const data = req.body.data
+    const data = req.body.data;
     data.forEach(async (item) => {
       try {
         await StudentCheck.query().insert({
@@ -609,10 +630,13 @@ exports.startLesson = async (req, res) => {
   try {
     const candidate = jwt.decode(req.headers.authorization.split(" ")[1]);
 
-    const lessonGroup = await GroupLesson.query().where('group_id', req.body.group_id).andWhere('lesson_status', 0).first()
+    const lessonGroup = await GroupLesson.query()
+      .where("group_id", req.body.group_id)
+      .andWhere("lesson_status", 0)
+      .first();
     if (lessonGroup != null) {
-      console.log(1)
-      return res.status(200).json({ success: false, err: 'lesson-started' })
+      console.log(1);
+      return res.status(200).json({ success: false, err: "lesson-started" });
     }
 
     await GroupLesson.query().insert({
@@ -620,40 +644,42 @@ exports.startLesson = async (req, res) => {
       group_id: req.body.group_id,
       lesson_start_time: new Date(),
       created: new Date(),
-      lesson_status: 0
-    })
-    return res.status(201).json({ success: true })
+      lesson_status: 0,
+    });
+    return res.status(201).json({ success: true });
+  } catch (e) {
+    console.log(e);
   }
-  catch (e) {
-    console.log(e)
-  }
-}
+};
 exports.endLesson = async (req, res) => {
-  await GroupLesson.query().where('group_id', req.params.id).update({
+  await GroupLesson.query().where("group_id", req.params.id).update({
     lesson_end_time: new Date(),
-    lesson_status: 1
-  })
-  return res.status(200).json({ success: true })
-}
+    lesson_status: 1,
+  });
+  return res.status(200).json({ success: true });
+};
 
 exports.deleteStudentGroup = async (req, res) => {
   try {
-    const con = await GroupStudent.query().findOne('id', req.params.id)
-    const group = await Group.query().findOne('id', con.group_id)
+    const con = await GroupStudent.query().findOne("id", req.params.id);
+    const group = await Group.query().findOne("id", con.group_id);
     if (group.status == 0) {
-      await GroupStudent.query().where('id', req.params.id).delete()
-      return res.status(200).json({ success: true })
+      await GroupStudent.query().where("id", req.params.id).delete();
+      return res.status(200).json({ success: true });
     }
-    await GroupStudent.query().where('id', req.params.id).update({ status: 2 })
-    const pays = await GroupStudentPay.query().where('gs_id', req.params.id).andWhere('status', 0)
+    await GroupStudent.query().where("id", req.params.id).update({ status: 2 });
+    const pays = await GroupStudentPay.query()
+      .where("gs_id", req.params.id)
+      .andWhere("status", 0);
     pays.forEach(async (item) => {
       if (new Date(item.payment_date) > new Date()) {
-        await GroupStudentPay.query().where('id', item.id).update({ status: 2 })
+        await GroupStudentPay.query()
+          .where("id", item.id)
+          .update({ status: 2 });
       }
-    })
-    return res.status(200).json({ success: true })
+    });
+    return res.status(200).json({ success: true });
+  } catch (e) {
+    console.log(e);
   }
-  catch (e) {
-    console.log(e)
-  }
-}
+};

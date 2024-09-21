@@ -8,7 +8,12 @@ const Token = require("../models/Token");
 const GroupStudentPay = require("../models/GroupStudentPay");
 const { signUpSchema } = require("../helper/validator");
 const some = require("../setting/mDb");
-
+const GroupStudent = require("../models/GroupStudent");
+const fs = require("fs");
+const { PDFDocument, rgb } = require("pdf-lib");
+const QRCode = require("qrcode");
+const path = require("path");
+const fontkit = require("fontkit");
 const updateTokens = (user_id) => {
   const accessToken = authHelper.generateAccessToken(user_id);
   const refreshToken = authHelper.generateRefreshToken();
@@ -285,7 +290,7 @@ exports.getStudentPay = async (req, res) => {
   try {
     const pay = await GroupStudentPay.query()
       .where("group_id", req.query.group_id)
-      .andWhere('student_id', req.query.student_id)
+      .andWhere("student_id", req.query.student_id);
     return res.status(200).json({ success: true, data: pay });
   } catch (e) {
     console.log(e);
@@ -302,10 +307,6 @@ exports.getPay = async (req, res) => {
     console.log(e);
   }
 };
-
-
-
-
 
 exports.getStudentDetails = async (req, res) => {
   try {
@@ -337,10 +338,9 @@ exports.editStudent = async (req, res) => {
 
 exports.getStudentByCode = async (req, res) => {
   try {
-    const student = await Student.query()
-      .findOne("code", req.params.code)
+    const student = await Student.query().findOne("code", req.params.code);
     if (!student) {
-      return res.status(200).json({ success: false, msg: 'u-n' })
+      return res.status(200).json({ success: false, msg: "u-n" });
     }
     return res.status(200).json({ success: true, data: student });
   } catch (error) {
@@ -497,17 +497,216 @@ exports.getGroupLessonsWithStatus = async (req, res) => {
   try {
     const { group_id } = req.params;
     if (isNaN(group_id))
-      return res.status(400).json({ success: false, msg: "Invalid group_id" })
+      return res.status(400).json({ success: false, msg: "Invalid group_id" });
 
-    const groupStudents = await some("lesson").select(
-      "lesson.*",
-    )
-      .orderBy("id", "asc")
+    const groupStudents = await some("lesson")
+      .select("lesson.*")
+      .orderBy("id", "asc");
 
     return res.status(200).json({ success: true, data: groupStudents });
-
   } catch (error) {
     console.log(error);
   }
 };
 
+exports.generateCertificate = async (req, res) => {
+  const gsp = await GroupStudent.query().findOne("cert_code", req.params.id);
+  if (gsp.status != 3) {
+    return res.status(200).json({ success: false, msg: "cert-not" });
+  }
+  const knex = await GroupStudent.knex();
+  const condidate = await knex.raw(`
+        SELECT  gs.id as id , gs.cert_code, s.full_name, gs.cert_date, d.name
+          FROM group_student gs
+          LEFT JOIN student s ON gs.student_id = s.id
+          LEFT JOIN groups gr ON gs.group_id = gr.id
+          LEFT JOIN direction d ON gr.direction_id = d.id
+        WHERE gs.cert_code = '${req.params.id}';
+    `);
+  const certificatePath = path.join(__dirname, "certificate.pdf");
+
+  // Foydalanuvchining ismi va familiyasi
+  const name = `${condidate[0][0].full_name}`;
+  const course = "Ushbu sertifikat"; // Kurs nomi
+  const praktikum = `"Praktikum Academy"`;
+  function formatDateToDDMMYYYY(date) {
+    const day = String(date.getDate()).padStart(2, "0"); // Get the day and pad with '0' if needed
+    const month = String(date.getMonth() + 1).padStart(2, "0"); // Get the month (0-indexed) and pad
+    const year = date.getFullYear(); // Get the full year
+
+    return `${day}.${month}.${year}`; // Return in dd.mm.YYYY format
+  }
+  // Hex rang kodini RGB ga o'zgartiruvchi funksiya
+  function hexToRgb(hex) {
+    const shorthandRegex = /^#?([a-f\d])([a-f\d])([a-f\d])$/i;
+    hex = hex.replace(shorthandRegex, (m, r, g, b) => r + r + g + g + b + b);
+
+    const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+    return result
+      ? {
+          r: parseInt(result[1], 16) / 255,
+          g: parseInt(result[2], 16) / 255,
+          b: parseInt(result[3], 16) / 255,
+        }
+      : null;
+  }
+  try {
+    // Sertifikat shablonini yuklash
+    const existingPdfBytes = fs.readFileSync(certificatePath);
+
+    // Yangi PDF hujjatini yaratish
+    const pdfDoc = await PDFDocument.load(existingPdfBytes);
+
+    // Fontkitni ro'yxatdan o'tkazish
+    pdfDoc.registerFontkit(fontkit);
+
+    // Poppins shriftini yuklash
+
+    const fontPath = path.join(__dirname, "../fonts/Poppins-Bold.ttf");
+    const poppinsFontBytes = fs.readFileSync(fontPath);
+    const poppinsFont = await pdfDoc.embedFont(poppinsFontBytes);
+
+    // PDF hujjatiga sahifa qo'shish
+    const pages = pdfDoc.getPages();
+    const firstPage = pages[0];
+
+    // PDF sahifasining o'lchamini olish
+    const { width, height } = firstPage.getSize();
+
+    // Hex kodni RGB formatiga o'zgartirish (masalan #0178b2)
+    const nameColor = hexToRgb("#0178b2");
+    const courseColor = hexToRgb("#878787"); // O'zingiz tanlagan boshqa rang
+
+    firstPage.drawText(name, {
+      x: 270,
+      y: height - 435,
+      size: 30,
+      font: poppinsFont, // Poppins shriftini qo'llash
+      color: rgb(nameColor.r, nameColor.g, nameColor.b), // Hex rangdan o'zgartirilgan rang
+    });
+
+    // **Kurs nomini qo'shish**
+    const courseFontSize = 20; // Kurs nomi uchun shrift hajmi
+
+    const fontPath2 = path.join(__dirname, "../fonts/Poppins-Regular.ttf");
+    const poppinsFontBytes2 = fs.readFileSync(fontPath2);
+    const poppinsFontRegulars = await pdfDoc.embedFont(poppinsFontBytes2);
+    firstPage.drawText(course, {
+      x: 330,
+      y: height - 480,
+      size: courseFontSize,
+      font: poppinsFontRegulars, // Poppins shriftini qo'llash
+      color: rgb(courseColor.r, courseColor.g, courseColor.b), // Hex rangdan o'zgartirilgan rang
+    });
+    firstPage.drawText(praktikum, {
+      x: 487,
+      y: height - 480,
+      size: courseFontSize,
+      font: poppinsFont, // Poppins shriftini qo'llash
+      color: rgb(courseColor.r, courseColor.g, courseColor.b), // Hex rangdan o'zgartirilgan rang
+    });
+    firstPage.drawText("ning", {
+      x: 718,
+      y: height - 480,
+      size: courseFontSize,
+      font: poppinsFontRegulars, // Poppins shriftini qo'llash
+      color: rgb(courseColor.r, courseColor.g, courseColor.b), // Hex rangdan o'zgartirilgan rang
+    });
+    firstPage.drawText(`kurslarini muvvafaqiyatli tugatganligi uchun`, {
+      x: 325,
+      y: height - 505,
+      size: courseFontSize,
+      font: poppinsFontRegulars, // Poppins shriftini qo'llash
+      color: rgb(courseColor.r, courseColor.g, courseColor.b), // Hex rangdan o'zgartirilgan rang
+    });
+    firstPage.drawText(`taqdim etildi`, {
+      x: 470,
+      y: height - 530,
+      size: courseFontSize,
+      font: poppinsFontRegulars, // Poppins shriftini qo'llash
+      color: rgb(courseColor.r, courseColor.g, courseColor.b), // Hex rangdan o'zgartirilgan rang
+    });
+    // **Tugatish sanasini qo'shish**
+    const dateFontSize = 18; // Sana uchun shrift hajmi
+    const dateX = 600; // Gorizontal joylashuv
+    const dateY = height - 740; // Vertikal joylashuv
+
+    firstPage.drawText(`Sertifikat kodi: ${condidate[0][0].cert_code}`, {
+      x: dateX,
+      y: dateY,
+      size: dateFontSize,
+      //font: poppinsFontRegulars, // Poppins shriftini qo'llash
+      color: rgb(nameColor.r, nameColor.g, nameColor.b), // Hex rangdan o'zgartirilgan rang
+    });
+
+    firstPage.drawText(`Kurs nomi: ${condidate[0][0].name}`, {
+      x: dateX,
+      y: height - 765,
+      size: dateFontSize,
+      //   font: poppinsFontRegulars, // Poppins shriftini qo'llash
+      color: rgb(nameColor.r, nameColor.g, nameColor.b), // Hex rangdan o'zgartirilgan rang
+    });
+    firstPage.drawText(`Sertifikatni tekshirish uchun skanerlang!`, {
+      x: 450,
+      y: height - 660,
+      size: 10,
+      // font: poppinsFontRegulars, // Poppins shriftini qo'llash
+      color: rgb(courseColor.r, courseColor.g, courseColor.b), // Hex rangdan o'zgartirilgan rang
+    });
+
+    firstPage.drawText(`${formatDateToDDMMYYYY(condidate[0][0].cert_date)}`, {
+      x: 370,
+      y: height - 750,
+      size: 20,
+      font: poppinsFont, // Poppins shriftini qo'llash
+      color: rgb(courseColor.r, courseColor.g, courseColor.b), // Hex rangdan o'zgartirilgan rang
+    });
+    firstPage.drawText(`Berilgan vaqti`, {
+      x: 370,
+      y: height - 780,
+      size: 16,
+      font: poppinsFontRegulars, // Poppins shriftini qo'llash
+      color: rgb(nameColor.r, nameColor.g, nameColor.b), // Hex rangdan o'zgartirilgan rang
+    });
+    // QR kod generatsiya qilish
+    const qrCodeDataUrl = await QRCode.toDataURL(
+      `https://crm.praktikum-academy.uz/certificate?code=${condidate[0][0].cert_code}`,
+      {
+        color: {
+          dark: "#0178b2", // QR kodning rangi
+          light: "#eaeaea", // QR kodning orqa foni
+        },
+      }
+    );
+
+    // QR kodni rasm sifatida PDFga joylashtirish
+    const qrImage = await pdfDoc.embedPng(qrCodeDataUrl);
+
+    // QR kodning joylashuvi va o'lchami
+    const qrWidth = 100;
+    const qrHeight = 100;
+    const qrX = width - 700; // QR kodning gorizontal joylashuvi
+    const qrY = height - 650; // QR kodning vertikal joylashuvi
+
+    firstPage.drawImage(qrImage, {
+      x: qrX, // QR kod gorizontal joylashuv
+      y: qrY, // QR kod vertikal joylashuv
+      width: qrWidth,
+      height: qrHeight,
+    });
+
+    // Yangi PDFni generatsiya qilish
+    const pdfBytes = await pdfDoc.save();
+
+    // Foydalanuvchiga PDFni yuklash imkoniyatini berish
+    res.setHeader(
+      "Content-Disposition",
+      `attachment; filename=${condidate[0][0].full_name}_certificate.pdf`
+    );
+    res.setHeader("Content-Type", "application/pdf");
+    res.send(Buffer.from(pdfBytes));
+  } catch (err) {
+    console.error(err);
+    res.status(500).send("Xatolik yuz berdi");
+  }
+};
