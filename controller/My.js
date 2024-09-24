@@ -159,7 +159,6 @@ exports.getMyLessonDars = async (req, res) => {
 
 exports.getDarsById = async (req, res) => {
   try {
-
     const dars_id = parseInt(req.params.id)
     const group_id = parseInt(req.query.group_id)
 

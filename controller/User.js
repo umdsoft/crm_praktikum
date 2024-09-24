@@ -54,7 +54,7 @@ exports.login = async (req, res) => {
     //     .status(400)
     //     .json({ success: false, msg: error.details[0].message });
     // }
-    const phone = req.body.phone.replace(/ /g,'')
+    const phone = req.body.phone.replace(/ /g, "");
     const user = await Users.query().where("phone", phone).first();
     if (!user) {
       return res
@@ -77,17 +77,17 @@ exports.login = async (req, res) => {
 };
 exports.refreshToken = async (req, res) => {
   try {
-    console.log(req.body)
+    console.log(req.body);
     let payload = jwt.verify(req.body.accessToken, secret);
     if (payload.type !== "refresh") {
       return res.status(400).json({ success: false, msg: "invalid-token" });
     }
   } catch (e) {
     if (e instanceof jwt.TokenExpiredError) {
-      console.log(1)
+      console.log(1);
       return res.status(400).json({ success: false, msg: "token-expiried" });
     } else if (e instanceof jwt.JsonWebTokenError) {
-      console.log(2)
+      console.log(2);
       return res.status(400).json({ success: false, msg: "invalid-token" });
     }
   }
@@ -106,7 +106,7 @@ exports.refreshToken = async (req, res) => {
 exports.getAllUsers = async (req, res) => {
   /* #swagger.security = [{
             "apiKeyAuth": []
-    }] */ 
+    }] */
   const limit = req.query.limit || 10;
   const skip = (req.query.page - 1) * limit;
   const users = await Users.query()
@@ -121,7 +121,9 @@ exports.editUser = async (req, res) => {
   try {
     const candidate = jwt.decode(req.headers.authorization.split(" ")[1]);
 
-    const userPhoneExist = await Users.query().where("phone", req.body.phone).first();
+    const userPhoneExist = await Users.query()
+      .where("phone", req.body.phone)
+      .first();
     if (userPhoneExist) {
       return res.status(400).json({ success: false, msg: "user-yes" });
     }
@@ -130,11 +132,10 @@ exports.editUser = async (req, res) => {
       phone: req.body.phone,
       name: req.body.name,
     });
-    
+
     if (!user) {
       return res.status(404).json({ success: false, msg: "user-not-found" });
     }
-
 
     return res.status(200).json({ success: true });
   } catch (error) {
@@ -165,9 +166,10 @@ exports.me = async (req, res) => {
   try {
     const candidate = jwt.decode(req.headers.authorization.split(" ")[1]);
     const user = await Users.query()
-      .where("id", candidate.user_id)
-      .first()
-      .select("id", "name", "phone", "role");
+      .select("user.id", "user.name", "user.phone", "role.name as role")
+      .leftJoin("role", "user.role", "role.id")
+      .findOne("user.id", candidate.user_id);
+
     return res.status(200).json({ success: true, data: user });
   } catch (e) {
     console.log(e);

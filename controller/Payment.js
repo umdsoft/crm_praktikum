@@ -57,9 +57,10 @@ exports.paymetStatistic = async (req, res) => {
     "SELECT sum(amount) as amount FROM group_student_pay gsp WHERE year(CURRENT_DATE()) = year(gsp.payment_date) and month(CURRENT_DATE()) = month(gsp.payment_date);"
   );
 
-  const qarz = await await StudentPay.knex().raw(
+  const qarz = await StudentPay.knex().raw(
     "SELECT sum(amount) as amount FROM group_student_pay gsp WHERE gsp.status = 0 and DATE(gsp.payment_date) < CURRENT_DATE();"
   );
+
 
   return res.status(200).json({
     success: true,

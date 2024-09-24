@@ -117,6 +117,13 @@ exports.createGroupStudent = async (req, res) => {
     const contract_number = `${group.code}/${idsss}`;
 
     if (group.status === 1) {
+      const con = await GroupStudent.query()
+        .where("student_id", req.body.student_id)
+        .andWhere("group_id", req.body.group_id)
+        .first();
+      if (con) {
+        return res.status(200).json({ success: false, msg: "user-bor" });
+      }
       let repush = [];
 
       const start_month = new Date(group.start_date);
@@ -185,10 +192,8 @@ exports.createGroupStudent = async (req, res) => {
 
 exports.startGroup = async (req, res) => {
   try {
-    console.log(req.body);
     const group = await Group.query().findOne("id", req.body.group_id);
     const startDate = new Date(req.body.start_date);
-
     if (!group) {
       return res
         .status(400)
@@ -198,13 +203,11 @@ exports.startGroup = async (req, res) => {
       return res.status(200).json({ success: false, msg: "group-stared" });
     }
     if (!group.duration) {
-      return res.status(400).json({ success: false, message: "duration-null" });
+      return res.status(200).json({ success: false, message: "duration-null" });
     }
-
     const groupUsers = await GroupStudent.query()
       .where("group_id", group.id)
       .orderBy("id", "desc");
-
     groupUsers.forEach(async (item) => {
       for (let i = 0; i < group.duration; i++) {
         const currentDate = new Date(req.body.start_date);
@@ -223,13 +226,11 @@ exports.startGroup = async (req, res) => {
       }
       await GroupStudent.query().where("id", item.id).update({ status: 1 });
     });
-
     await Group.query().where("id", req.body.group_id).update({
       status: 1,
       main_mentor: req.body.mentor,
       start_date: startDate,
     });
-
     return res.status(200).json({ success: true });
   } catch (e) {
     console.log(e);
@@ -240,13 +241,11 @@ exports.endGroup = async (req, res) => {
     await Group.query().where("id", req.params.id).update({ status: 2 });
     const gsp = await GroupStudent.query().where("group_id", req.params.id);
     gsp.forEach(async (item) => {
-      await GroupStudent.query()
-        .where("id", item.id)
-        .update({
-          status: 3,
-          cert_code: generateUUID(),
-          cert_date: new Date(),
-        });
+      await GroupStudent.query().where("id", item.id).update({
+        status: 3,
+        cert_code: generateUUID(),
+        cert_date: new Date(),
+      });
     });
 
     return res.status(200).json({ success: true });
@@ -679,6 +678,55 @@ exports.deleteStudentGroup = async (req, res) => {
       }
     });
     return res.status(200).json({ success: true });
+  } catch (e) {
+    console.log(e);
+  }
+};
+
+exports.getCheckGroupData = async (req, res) => {
+  try {
+    const data = await GroupLesson.knex().raw(`
+  SELECT gl.*, 
+       u.name, 
+       g.code, 
+       d.name AS direction, 
+       COUNT(DISTINCT gs.id) AS student_count,
+       COUNT(DISTINCT CASE WHEN gsc.status = 1 THEN gsc.gs_id END) AS attended_count,
+       COUNT(DISTINCT CASE WHEN gsc.status = 0 THEN gsc.gs_id END) AS not_attended_count
+FROM group_lesson gl
+LEFT JOIN user u ON gl.mentor_id = u.id
+LEFT JOIN groups g ON gl.group_id = g.id
+LEFT JOIN direction d ON g.direction_id = d.id
+LEFT JOIN group_student gs ON gs.group_id = g.id
+LEFT JOIN group_student_checkup gsc ON gsc.gl_id = gl.id AND gsc.gs_id = gs.id
+GROUP BY gl.id, u.name, g.code, d.name
+ORDER BY gl.lesson_status ASC,gl.created DESC
+LIMIT 15 OFFSET 0;
+      `);
+    return res.status(200).json({ success: true, data: data[0] });
+  } catch (e) {
+    console.log(e);
+  }
+};
+
+exports.getOneCheckGroupLesson = async (req, res) => {
+  try {
+    const data = await GroupLesson.knex().raw(`
+      SELECT s.full_name, 
+       s.phone, 
+       gsc.status ,
+       gsc.reason,
+       d.name as direction,
+       g.code
+FROM group_student_checkup gsc
+JOIN group_student gs ON gsc.gs_id = gs.id
+JOIN student s ON gs.student_id = s.id
+LEFT JOIN groups g ON gsc.group_id = g.id
+LEFT JOIN direction d ON g.direction_id = d.id
+WHERE gsc.gl_id = ${req.params.id};
+    `);
+
+    return res.status(200).json({ success: true, data: data[0] });
   } catch (e) {
     console.log(e);
   }
