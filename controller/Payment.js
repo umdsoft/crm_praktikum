@@ -61,7 +61,6 @@ exports.paymetStatistic = async (req, res) => {
     "SELECT sum(amount) as amount FROM group_student_pay gsp WHERE gsp.status = 0 and DATE(gsp.payment_date) < CURRENT_DATE();"
   );
 
-
   return res.status(200).json({
     success: true,
     data: {
@@ -110,6 +109,7 @@ exports.createPay = async (req, res) => {
       await StudentPay.query().where("id", req.params.id).update({
         status: 1,
         teacher_id: req.body.teacher_id,
+        amount: req.body.amount,
         paid_time: formattedTime,
         paid_date: req.body.pay_data,
         pay_type: req.body.pay_type,
