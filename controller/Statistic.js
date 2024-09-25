@@ -28,7 +28,7 @@ WHERE gs.status = 1;`);
        group_student_pay
      WHERE 
        status = 1
-       AND payment_date >= CURDATE() - INTERVAL 30 DAY
+       AND paid_date >= CURDATE() - INTERVAL 30 DAY
      GROUP BY 
        DATE(payment_date)
      ORDER BY 

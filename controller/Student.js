@@ -56,7 +56,7 @@ exports.createStudent = async (req, res) => {
       .where("phone", req.body.phone)
       .first();
     if (student) {
-      return res.status(400).json({ success: false, msg: "user-exist" });
+      return res.status(200).json({ success: false, msg: "user-exist" });
     }
 
     // create Student
