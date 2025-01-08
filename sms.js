@@ -11,19 +11,14 @@ const sendSms = async () => {
     })
     .then(function (response) {
       for (let i = 0; i < con.length; i++) {
-        const message = `Maktabni bitirib nima qilsam ekan?
-
-        Agar siz ham shuni o'ylayotgan bo'lsangiz Praktikum Academy Mobilografiya, SMM va Dasturlash kurslariga qabulni ochdik!
-        
-        Ro'yhatdan o'tish: https://forms.gle/zs8jXNnYgrBVq4hK8
-        
-        Telefon: +998781137008
-`;
-       axios
+        const message = `Ingliz (IELTS 7+) va Rus tilini mukammal bilasizmi? Urganch shahridagi Praktikum Academy siz dars bera olasiz! Qiziqarli jamoa va qulay sharoitlar sizni kutmoqda! 
+        Hoziroq ro'yhatdan o'ting va ishga joylashing: 
+        https://forms.gle/naEYtfuBg9xpVYf27`;
+        axios
           .post(
             "https://notify.eskiz.uz/api/message/sms/send",
             {
-              mobile_phone: `998${con[i].phone}`,
+              mobile_phone: `${con[i].phone}`,
               message: message,
               from: "4546",
             },
@@ -35,7 +30,7 @@ const sendSms = async () => {
           )
           .then(function (response) {
             sum = sum + 1;
-            console.log(response.data);
+            console.log("success");
           })
           .catch(function (error) {
             console.log(error);
