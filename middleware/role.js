@@ -1,12 +1,8 @@
-const User = require("../models/User");
-const Role = require("../models/Role");
-exports.role = (role) => {
-  return async (req, res, next) => {
-    const thisRole = await Role.query().findById(role);
-    if (thisRole.name !== role) {
-      return res
-        .status(403)
-        .json({ message: "You are not allowed to access this route" });
+
+exports.checkRole = (...roles) => {
+  return (req, res, next) => {
+    if (!roles.includes(req.user.role)) {
+      return res.status(403).json({ success: false, message: "forbidden" });
     }
     next();
   };

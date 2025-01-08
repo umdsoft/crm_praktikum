@@ -33,16 +33,7 @@ app.use(morgan("tiny"));
 app.use("/images", express.static(path.join(__dirname, "images")));
 app.use("/api", require("./router/index"));
 
-const numCPUs = os.cpus().length;
-if (cluster.isMaster) {
-  for (let i = 0; i < numCPUs; i++) {
-    cluster.fork();
-  }
-  cluster.on("exit", (worker, code, signal) => {
-    console.log(`Worker ${worker.process.pid} died`);
+
+  app.listen(3001, () => {
+    console.log(`Server 3111 is running`);
   });
-} else {
-  app.listen(3111, () => {
-    console.log(`Server ${process.pid} is running`);
-  });
-}

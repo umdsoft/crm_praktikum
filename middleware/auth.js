@@ -21,7 +21,12 @@ module.exports = async (req, res, next) => {
     }
   }
   const candidate = jwt.decode(token);
-  const user = await User.query().findById(candidate.user_id);
+  const user = await User.query()
+    .select("user.id", "user.name", "user.phone", "role.name as role")
+    .leftJoin("role", "user.role", "role.id")
+    .findOne("user.id", candidate.user_id);
   req.user = user;
   next();
 };
+
+

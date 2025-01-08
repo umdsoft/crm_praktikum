@@ -4,4 +4,5 @@ const Statistic = require("../../controller/Statistic");
 
 router.get('/admin-home', Statistic.getAdminHomeStatistic)
 
+
 module.exports = router;
