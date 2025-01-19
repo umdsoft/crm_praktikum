@@ -7,6 +7,8 @@ const sql = require("../setting/mDb");
 const jwt = require("jsonwebtoken");
 const Reklama = require("../models/reklama");
 const LeadTask = require("../models/lead_task");
+const Direction = require("../models/Direction");
+
 
 exports.create = async (req, res) => {
   try {
@@ -19,6 +21,7 @@ exports.create = async (req, res) => {
           target_id: req.body.target,
           edit_date: new Date(),
           edit_time: new Date(),
+          direction_id: req.body.direction,
         })
         .then(async (newLead) => {
           await LeadAction.query().insert({
@@ -42,6 +45,7 @@ exports.create = async (req, res) => {
             target_id: req.body.target,
             edit_date: new Date(),
             edit_time: new Date(),
+            direction_id: req.body.direction,
           })
           .then(async (newLead) => {
             await LeadAction.query().insert({
@@ -167,7 +171,8 @@ exports.createSite = async (req, res) => {
 exports.getTarget = async (req, res) => {
   try {
     const target = await Target.query().select("*");
-    return res.status(200).json({ success: true, target });
+    const direction = await Direction.query().select("*");
+    return res.status(200).json({ success: true, target, direction });
   } catch (e) {
     console.log(e);
   }
@@ -179,15 +184,22 @@ exports.getById = async (req, res) => {
       .where("lead_id", lead.id)
       .orderBy("id", "desc")
       .first();
+      const actions = await LeadAction.query()
+      .alias('la') // LeadAction uchun alias belgilash
+      .join('user AS u', 'la.user_id', 'u.id') // `user` jadvali bilan join qilish
+      .select('la.*', 'u.name AS user_name') // Tanlangan ustunlar
+      .where('la.lead_id', newLead.id) // `lead_id` ustuni `newLead.id` ga  
+      .orderBy('la.id', 'desc'); // ID bo‘yicha tartiblash
 
     return res.status(200).json({
       success: true,
       lead,
       newLead: newLead.id,
       action: newLead.action,
+      actions: actions,
     });
   } catch (e) {
-    return res.status(400).json({ success: false, msg: e });
+    console.log(e)
   }
 };
 
@@ -197,9 +209,10 @@ exports.getByNew = async (req, res) => {
     const skip = (req.query.page - 1) * limit || 0;
     const action = req.query.action || 0;
     const leads = await NewLead.knex().raw(`
-    SELECT nl.id,nl.created,nl.time,l.name,l.id as uid,l.phone,t.name as target,t.id as tid FROM new_lead nl 
+    SELECT nl.id,nl.created,nl.time,l.name,l.id as uid,l.phone,t.name as target,t.id as tid,d.name_org as direction  FROM new_lead nl 
     left join leads l on nl.lead_id = l.id
     left join target t on nl.target_id = t.id
+    left join direction d on nl.direction_id = d.id
     WHERE nl.action = ${action}
     ORDER BY nl.id DESC
     limit ${limit}
@@ -272,12 +285,43 @@ exports.postInterested = async (req, res) => {
     console.log(error);
   }
 };
-
+exports.editKanban = async (req, res) => {
+  try {
+    const candidate = jwt.decode(req.headers.authorization.split(" ")[1]);
+    const lead = await NewLead.query().findById(req.params.id);
+    await LeadAction.query().insert({
+      lead_id: req.params.id,
+      to: lead.action,
+      do: req.body.action,
+      type: 1,
+      user_id: candidate.user_id,
+    });
+    await lead.$query().update(req.body);  
+    return res.status(200).json({ success: true });
+  } catch (e) {
+    console.log(e);
+  }
+};
+exports.createAction = async (req, res) => {
+  try {
+    const candidate = jwt.decode(req.headers.authorization.split(" ")[1]);
+    await LeadAction.query().insert({
+      lead_id: req.params.id,
+      user_id: candidate.user_id,
+      type: 2,
+      text: req.body.text,
+    });
+    return res.status(200).json({ success: true });
+  } catch (e) {
+    console.log(e);
+  }
+};
 exports.editLead = async (req, res) => {
   try {
     const lead = await Lead.query().findById(req.params.id);
     await lead.$query().update(req.body);
     return res.status(200).json({ success: true });
+    // console.log(req.body)
   } catch (e) {
     console.log(e);
   }
@@ -285,40 +329,38 @@ exports.editLead = async (req, res) => {
 
 exports.createTaskLead = async (req, res) => {
   try {
-    const candidate = jwt.decode(req.headers.authorization.split(" ")[1]); 
+    const candidate = jwt.decode(req.headers.authorization.split(" ")[1]);
 
     await LeadTask.query().insert({
       lead_id: req.body.lead_id,
       task: req.body.task,
-      user_id: candidate.user_id
-    })
-
+      user_id: candidate.user_id,
+    });
 
     return res.status(200).json({ success: true });
   } catch (error) {
     console.log("Error occurred:", error);
-    return res.status(500).json({ success: false, error: "Internal server error" });
+    return res
+      .status(500)
+      .json({ success: false, error: "Internal server error" });
   }
-}
-
+};
 
 exports.getTasksLead = async (req, res) => {
   try {
     const data = await sql("lead_task")
-        .select(
-          "lead_task.*",
-          "user.id as user_id",
-          "user.name as user_name",
-          "user.role as user_role",
-        ).where('lead_id', req.params.lead_id)
-        .leftJoin("user", "lead_task.user_id", "user.id")
+      .select(
+        "lead_task.*",
+        "user.id as user_id",
+        "user.name as user_name",
+        "user.role as user_role"
+      )
+      .where("lead_id", req.params.lead_id)
+      .leftJoin("user", "lead_task.user_id", "user.id");
 
-
-
-        console.log(data);
+    console.log(data);
     return res.status(200).json({ success: true, data });
   } catch (error) {
-    console.log(error)
+    console.log(error);
   }
-}
-
+};

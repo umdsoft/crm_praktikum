@@ -12,6 +12,8 @@ router.get("/get-lead", authMiddleware, Lead.getByNew);
 
 
 router.put("/edit-lead/:id", authMiddleware, Lead.editLead);
+router.post('/create-action/:id', authMiddleware, Lead.createAction);
+router.put("/edit-kanban/:id", authMiddleware, Lead.editKanban);
 router.post("/interest/", authMiddleware, Lead.postInterested);
 router.get("/interest/:lead_id", authMiddleware, Lead.getInterested);
 
