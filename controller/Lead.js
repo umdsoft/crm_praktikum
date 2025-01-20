@@ -9,7 +9,6 @@ const Reklama = require("../models/reklama");
 const LeadTask = require("../models/lead_task");
 const Direction = require("../models/Direction");
 
-
 exports.create = async (req, res) => {
   try {
     const candidate = jwt.decode(req.headers.authorization.split(" ")[1]);
@@ -184,12 +183,12 @@ exports.getById = async (req, res) => {
       .where("lead_id", lead.id)
       .orderBy("id", "desc")
       .first();
-      const actions = await LeadAction.query()
-      .alias('la') // LeadAction uchun alias belgilash
-      .join('user AS u', 'la.user_id', 'u.id') // `user` jadvali bilan join qilish
-      .select('la.*', 'u.name AS user_name') // Tanlangan ustunlar
-      .where('la.lead_id', newLead.id) // `lead_id` ustuni `newLead.id` ga  
-      .orderBy('la.id', 'desc'); // ID bo‘yicha tartiblash
+    const actions = await LeadAction.query()
+      .alias("la") // LeadAction uchun alias belgilash
+      .join("user AS u", "la.user_id", "u.id") // `user` jadvali bilan join qilish
+      .select("la.*", "u.name AS user_name") // Tanlangan ustunlar
+      .where("la.lead_id", newLead.id) // `lead_id` ustuni `newLead.id` ga
+      .orderBy("la.id", "desc"); // ID bo‘yicha tartiblash
 
     return res.status(200).json({
       success: true,
@@ -199,7 +198,7 @@ exports.getById = async (req, res) => {
       actions: actions,
     });
   } catch (e) {
-    console.log(e)
+    console.log(e);
   }
 };
 
@@ -296,7 +295,7 @@ exports.editKanban = async (req, res) => {
       type: 1,
       user_id: candidate.user_id,
     });
-    await lead.$query().update(req.body);  
+    await lead.$query().update(req.body);
     return res.status(200).json({ success: true });
   } catch (e) {
     console.log(e);
@@ -360,6 +359,19 @@ exports.getTasksLead = async (req, res) => {
 
     console.log(data);
     return res.status(200).json({ success: true, data });
+  } catch (error) {
+    console.log(error);
+  }
+};
+
+exports.getCandidate = async (req, res) => {
+  try {
+    const candidates = await NewLead.query()
+    .select("new_lead.*", "leads.*", "direction.name_org")
+    .leftJoin("leads", "new_lead.lead_id", "leads.id")
+    .leftJoin("direction", "new_lead.direction_id", "direction.id")
+    .where('new_lead.action', 2).orWhere('new_lead.action', 3)
+    return res.status(200).json({ success: true, candidates });
   } catch (error) {
     console.log(error);
   }
