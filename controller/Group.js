@@ -297,7 +297,19 @@ exports.getOneCourseData = async (req, res) => {
     left join student s on gsp.student_id = s.id
     WHERE gsp.group_id = ${req.params.id} and YEAR(gsp.payment_date) = YEAR(CURRENT_DATE()) and MONTH(gsp.payment_date) = MONTH(CURRENT_DATE());
       `);
-
+    const checkData = await StudentCheck.knex().raw(`
+        SELECT 
+    group_id, 
+    DATE_FORMAT(created, '%d.%m.%Y') as created
+FROM 
+    group_student_checkup
+WHERE 
+    group_id = ${req.params.id}
+GROUP BY 
+    created
+ORDER BY 
+    created;
+        `);
     const [rows] = await StudentCheck.knex().raw(
       ` SELECT 
           a.student_id,
@@ -347,6 +359,7 @@ exports.getOneCourseData = async (req, res) => {
       groupStudents: groupStudents,
       payment: payment[0],
       lessonGroup: lessonGroup,
+      checkData:checkData[0],
       formattedData: groupedData,
     });
   } catch (e) {
@@ -743,7 +756,7 @@ LEFT JOIN direction d ON g.direction_id = d.id
 LEFT JOIN group_student gs ON gs.group_id = g.id
 LEFT JOIN group_student_checkup gsc ON gsc.gl_id = gl.id AND gsc.gs_id = gs.id
 GROUP BY gl.id, u.name, g.code, d.name
-ORDER BY gl.lesson_status ASC,gl.created DESC
+ORDER BY gl.lesson_status ASC, gl.id DESC
 LIMIT 15 OFFSET 0;
       `);
     return res.status(200).json({ success: true, data: data[0] });
