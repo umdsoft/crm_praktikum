@@ -298,17 +298,17 @@ exports.getOneCourseData = async (req, res) => {
     WHERE gsp.group_id = ${req.params.id} and YEAR(gsp.payment_date) = YEAR(CURRENT_DATE()) and MONTH(gsp.payment_date) = MONTH(CURRENT_DATE());
       `);
     const checkData = await StudentCheck.knex().raw(`
-        SELECT 
-    group_id, 
-    DATE_FORMAT(created, '%d.%m.%Y') as created
-FROM 
-    group_student_checkup
-WHERE 
-    group_id = ${req.params.id}
-GROUP BY 
-    created
-ORDER BY 
-    created;
+          SELECT 
+      group_id, 
+      DATE_FORMAT(created, '%d.%m.%Y') as created
+  FROM 
+      group_student_checkup
+  WHERE 
+      group_id = ${req.params.id}
+  GROUP BY 
+      created
+  ORDER BY 
+      created;
         `);
     const [rows] = await StudentCheck.knex().raw(
       ` SELECT 
