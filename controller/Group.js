@@ -68,9 +68,40 @@ exports.getAllGroup = async (req, res) => {
   try {
     const limit = req.query.limit || 15;
     const skip = req.query.skip;
+    const candidate = jwt.decode(req.headers.authorization.split(" ")[1]);
+    const user = await Users.query().where("id", candidate.user_id).first();
     let groupsCountQuery = sql("groups"); // Initialize the groups count query
     const groupsCount = await groupsCountQuery.count("id as count").first(); // Calculate the count based on the condition
-    const groups = await sql("groups")
+    let groups
+    if(user.role == '8'){
+      groups = await sql("groups")
+      .select(
+        "groups.id as id",
+        "groups.created as created",
+        "groups.code as code",
+        "groups.status as status",
+        "groups.duration as duration",
+        "groups.main_mentor as main_mentor_id",
+        "groups.start_date as start_date",
+        sql.raw("COUNT(group_student.id) as student_count"), // Count the number of students for each group
+        "direction.name as direction_name",
+        "lesson_day.name as day",
+        "room.name as room",
+        "lesson_time.name as time"
+      )      
+      .leftJoin("direction", "groups.direction_id", "direction.id")
+      .leftJoin("group_student", "groups.id", "group_student.group_id") // Join on the group_id
+      .leftJoin("lesson_day", "groups.day", "lesson_day.id") // Join on the group_id
+      .leftJoin("room", "groups.room_id", "room.id")
+      .leftJoin("lesson_time", "groups.time", "lesson_time.id")
+      .groupBy("groups.id") // Group by group id to get the count of students for each group
+      .where("groups.main_mentor", user.id)
+      .limit(limit)
+      .offset(skip)
+      .orderBy("status", "asc");
+
+    } else {
+      groups = await sql("groups")
       .select(
         "groups.id as id",
         "groups.created as created",
@@ -93,7 +124,8 @@ exports.getAllGroup = async (req, res) => {
       .groupBy("groups.id") // Group by group id to get the count of students for each group
       .limit(limit)
       .offset(skip)
-      .orderBy("id", "desc");
+      .orderBy("status", "asc");
+    }
     return res.status(200).json({
       success: true,
       limit: limit,
@@ -520,7 +552,7 @@ exports.getGroupStudents = async (req, res) => {
 
 exports.postCheckStudent = async (req, res) => {
   try {
-    // console.log(req.body)
+    
     const data = req.body.data;
     data.forEach(async (item) => {
       try {
