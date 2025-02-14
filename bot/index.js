@@ -3,6 +3,7 @@ const config = require('./config/config');
 const logger = require('./utils/logger');
 const QuestionHandler = require('./handlers/questionHandler');
 const CommandHandler = require('./handlers/commandHandler');
+const AttendanceNotifier = require('./components/attendanceNotifier');
 
 try {
     const bot = new TelegramBot(config.TELEGRAM_BOT_TOKEN, { polling: true });
@@ -51,6 +52,12 @@ try {
     // Xatoliklarni qayta ishlash
     bot.on('polling_error', (error) => {
         logger.error('Xatolik yuz berdi:', error.message);
+    });
+
+    // Bot ishga tushganda
+    bot.on('ready', () => {
+        // Yo'qlama notifikatsiyasini ishga tushirish
+        new AttendanceNotifier(bot);
     });
 
     logger.info('Bot muvaffaqiyatli ishga tushdi');

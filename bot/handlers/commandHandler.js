@@ -1,16 +1,22 @@
 const { createDbConnection } = require('../database/connection');
 const logger = require('../utils/logger');
+const UpcomingCourses = require('../components/upcomingCourses');
+const ReferralSystem = require('../components/referralSystem');
 
 class CommandHandler {
     constructor(bot) {
         this.bot = bot;
+        this.upcomingCourses = new UpcomingCourses(bot);
+        this.referralSystem = new ReferralSystem(bot);
         this.mainKeyboard = {
             reply_markup: {
                 keyboard: [
                     ["📚 Kurslar haqida ma'lumot"],
-                    ["📝 Ro'yhatdan o'tish"],
+                    ["📝 Yaqin kunlarda ochiladigan kurslar ro'yxati"],
+                    ["📝 Kurslarga ro'yhatdan o'tish"],
                     ["📍 Manzilni ko'rish"],
-                    ["📞 Aloqa"]
+                    ["📞 Aloqa"],
+                    ["👥 Referallar"]
                 ],
                 resize_keyboard: true
             }
@@ -51,14 +57,17 @@ class CommandHandler {
         }
     }
 
-    async saveUser(userId, firstName, username) {
+    async saveUser(userId, firstName, username, referrerId = null) {
         let connection;
         try {
             connection = await createDbConnection();
             await connection.execute(
-                'INSERT INTO telegram_user (user_id, first_name, username, created_at) VALUES (?, ?, ?, NOW()) ON DUPLICATE KEY UPDATE first_name = ?, username = ?',
-                [userId, firstName, username, firstName, username]
+                'INSERT INTO telegram_user (user_id, first_name, username, points, created_at) VALUES (?, ?, ?, ?, NOW()) ON DUPLICATE KEY UPDATE first_name = ?, username = ?',
+                [userId, firstName, username, 0, firstName, username]
             );
+
+            // Handle referral points through referral system
+            await this.referralSystem.handleReferral(userId, referrerId);
             return true;
         } catch (error) {
             logger.error('Foydalanuvchini saqlashda xatolik:', error);
@@ -104,32 +113,15 @@ class CommandHandler {
             const userId = msg.from.id;
             const firstName = msg.from.first_name;
 
+            // Check for referral parameter
+            const referrerId = msg.text.split(' ')[1];
+
             // Foydalanuvchini tekshirish
             const userInfo = await this.checkUserRegistration(userId);
 
-            // Agar foydalanuvchi ro'yxatdan o'tgan bo'lsa
-            if (userInfo && userInfo.phone_number) {
-                const welcomeMessage = 
-                `🎉 Bizning safimizga Xush kelibsiz ${firstName}! 🎉\n\n` +
-                `Siz Praktikum Academyning rasmiy botiga keldingiz! 🚀\n` +
-                `Bu yerda siz tez va oson tarzda kurslarga yozilish, dars jadvalini bilish va zarur ma’lumotlarni olish imkoniyatiga egasiz.\n` +
-                `\n` +
-                `📌 Nima qilish kerak? \n` +
-                `1️⃣ Tugmalardan foydalanib, kerakli bo‘limni tanlang.\n` +
-                `2️⃣ Ro‘yxatdan o‘tish uchun kerakli kursni tanlang va ro‘yhatdan o'ting.\n` +
-                `3️⃣ Hammasi tayyor! Bizning jamoamiz siz bilan tez orada bog‘lanadi.\n\n` +
-                `🙋‍♂️Agar savollaringiz bo‘lsa bemalol bizga jo'nating. Quyidagi tugmalardan birini tanlang 👇`;
-                await this.bot.sendMessage(
-                    chatId,
-                    welcomeMessage,
-                    this.mainKeyboard
-                );
-                return;
-            }
-
             // Yangi foydalanuvchini saqlash
             if (!userInfo) {
-                await this.saveUser(userId, firstName, msg.from.username);
+                await this.saveUser(userId, firstName, msg.from.username, referrerId);
             }
 
             // Telefon raqam so'rash
@@ -150,6 +142,7 @@ class CommandHandler {
             const chatId = msg.chat.id;
             const userId = msg.from.id;
             const contact = msg.contact;
+            const firstName = msg.from.first_name;
 
             // Telefon raqam o'zining ekanligini tekshirish
             if (contact.user_id !== userId) {
@@ -168,13 +161,13 @@ class CommandHandler {
                 const welcomeMessage = 
                 `🎉 Bizning safimizga Xush kelibsiz ${firstName}! 🎉\n\n` +
                 `Siz Praktikum Academyning rasmiy botiga keldingiz! 🚀\n` +
-                `Bu yerda siz tez va oson tarzda kurslarga yozilish, dars jadvalini bilish va zarur ma’lumotlarni olish imkoniyatiga egasiz.\n` +
+                `Bu yerda siz tez va oson tarzda kurslarga yozilish, dars jadvalini bilish va zarur ma'lumotlarni olish imkoniyatiga egasiz.\n` +
                 `\n` +
                 `📌 Nima qilish kerak? \n` +
-                `1️⃣ Tugmalardan foydalanib, kerakli bo‘limni tanlang.\n` +
-                `2️⃣ Ro‘yxatdan o‘tish uchun kerakli kursni tanlang va ro‘yhatdan o'ting.\n` +
-                `3️⃣ Hammasi tayyor! Bizning jamoamiz siz bilan tez orada bog‘lanadi.\n\n` +
-                `🙋‍♂️Agar savollaringiz bo‘lsa bemalol bizga jo'nating. Quyidagi tugmalardan birini tanlang 👇`;
+                `1️⃣ Tugmalardan foydalanib, kerakli bo'limni tanlang.\n` +
+                `2️⃣ Ro'yxatdan o'tish uchun kerakli kursni tanlang va ro'yhatdan o'ting.\n` +
+                `3️⃣ Hammasi tayyor! Bizning jamoamiz siz bilan tez orada bog'lanadi.\n\n` +
+                `🙋‍♂️Agar savollaringiz bo'lsa bemalol bizga jo'nating. Quyidagi tugmalardan birini tanlang 👇`;
 
                 await this.bot.sendMessage(chatId, welcomeMessage, this.mainKeyboard);
             } else {
@@ -192,6 +185,7 @@ class CommandHandler {
     // Asosiy tugmalar
     async handleButtons(msg) {
         const chatId = msg.chat.id;
+        const userId = msg.from.id;
         
         switch (msg.text) {
             case "📚 Kurslar haqida ma'lumot":
@@ -204,12 +198,20 @@ class CommandHandler {
                 );
                 break;
 
-            case "📝 Ro'yhatdan o'tish":
+            case "📝 Yaqin kunlarda ochiladigan kurslar ro'yxati":
+                await this.bot.sendMessage(chatId, "Hello World!");
+                break;
+
+            case "📝 Kurslarga ro'yhatdan o'tish":
                 await this.bot.sendMessage(chatId, 
-                    "Ro'yhatdan o'tish uchun quyidagi ma'lumotlarni yuboring:\n\n" +
+                    "Kurslarga ro'yhatdan o'tish uchun quyidagi ma'lumotlarni yuboring:\n\n" +
                     "1. To'liq ismingiz\n" +
                     "2. Telefon raqamingiz\n" +
-                    "3. Tanlagan kursingiz"
+                    "3. Tanlagan kursingiz\n\n" +
+                    "Quyidagi kurslardan birini tanlang:\n" +
+                    "- Frontend Development\n" +
+                    "- Backend Development\n" +
+                    "- Mobile Development"
                 );
                 break;
 
@@ -247,6 +249,10 @@ class CommandHandler {
                     "📧 Email: info@example.com\n" +
                     "🌐 Web: www.example.com"
                 );
+                break;
+
+            case "👥 Referallar":
+                await this.referralSystem.showReferralInfo(chatId, userId);
                 break;
 
             default:
