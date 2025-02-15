@@ -14,5 +14,6 @@ app.use('/payment', require('./router/payment'))
 app.use("/my", require("./router/my"));
 app.use("/statistic", require("./router/statistic"));
 app.use('/kpi', require('./router/kpi'));
+app.use('/course', require('./router/course'));
 
 module.exports = app;
