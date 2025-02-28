@@ -61,6 +61,55 @@ exports.create = async (req, res) => {
     return console.log(e);
   }
 };
+exports.createOnline = async (req, res) => {
+  try {
+    const old_lead = await Lead.query().where("phone", req.body.phone).first();
+    if (old_lead) {
+      await NewLead.query()
+        .insert({
+          lead_id: old_lead.id,
+          target_id: req.body.target,
+          edit_date: new Date(),
+          edit_time: new Date(),
+          direction_id: req.body.direction,
+        })
+        .then(async (newLead) => {
+          await LeadAction.query().insert({
+            lead_id: newLead.id,
+            to: 0,
+            do: 0,
+          });
+        });
+      return res.status(200).json({ success: true });
+    }
+    await Lead.query()
+      .insert({
+        name: req.body.full_name,
+        phone: req.body.phone,
+      })
+      .then(async (lead) => {
+        await NewLead.query()
+          .insert({
+            lead_id: lead.id,
+            target_id: 8,
+            edit_date: new Date(),
+            edit_time: new Date()
+          })
+          .then(async (newLead) => {
+            await LeadAction.query().insert({
+              lead_id: newLead.id,
+              to: 0,
+              do: 0,
+              user_id: 1,
+            });
+          });
+      });
+
+    return res.status(200).json({ success: true });
+  } catch (e) {
+    return console.log(e);
+  }
+};
 exports.register = async (req, res) => {
   try {
     const old_lead = await Lead.query().where("phone", req.body.phone).first();

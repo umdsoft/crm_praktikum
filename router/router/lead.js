@@ -4,6 +4,7 @@ const authMiddleware = require("../../middleware/auth");
 
 router.get("/get-target", authMiddleware, Lead.getTarget);
 router.post("/create", authMiddleware, Lead.create);
+router.post('/create-online',Lead.createOnline)
 router.post("/register", Lead.register);
 router.post("/create-site", Lead.createSite);
 router.get("/by-id/:id", authMiddleware, Lead.getById);
