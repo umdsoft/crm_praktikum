@@ -28,30 +28,7 @@ app.use(
 app.use(bodyParser.json());
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
-// Frontend’larning kelib chiqishlari (origins)
-const allowedOrigins = [
-  'https://target.umdsoft.uz', // Birinchi frontend domeni
-  'https://umdsoft.uz', // Ikkinchi frontend domeni
-  'http://localhost:3000', // Lokal sinov uchun
-];
-
-// CORS sozlamalari
-const corsOptions = {
-  origin: (origin, callback) => {
-    // Agar origin ruxsat etilgan bo‘lsa
-    if (allowedOrigins.includes(origin) || !origin) { // !origin lokal sinovlar uchun
-      callback(null, true);
-    } else {
-      callback(new Error('CORS xatosi: Ruxsat etilmagan kelib chiqish'));
-    }
-  },
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization'],
-  credentials: true, // Agar cookie yoki auth token ishlatilsa
-  optionsSuccessStatus: 200, // IE uchun
-};
-
-app.use(cors(corsOptions));
+app.use(cors("*"));
 app.use(morgan("tiny"));
 app.use("/images", express.static(path.join(__dirname, "images")));
 app.use("/api", require("./router/index"));
