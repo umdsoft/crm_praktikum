@@ -71,7 +71,7 @@ exports.createOnline = async (req, res) => {
           target_id: req.body.target,
           edit_date: new Date(),
           edit_time: new Date(),
-          direction_id: req.body.direction,
+          direction_id: 8,
         })
         .then(async (newLead) => {
           await LeadAction.query().insert({
@@ -93,7 +93,8 @@ exports.createOnline = async (req, res) => {
             lead_id: lead.id,
             target_id: 8,
             edit_date: new Date(),
-            edit_time: new Date()
+            edit_time: new Date(),
+            direction_id: 8,
           })
           .then(async (newLead) => {
             await LeadAction.query().insert({
