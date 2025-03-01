@@ -670,7 +670,7 @@ exports.generateCertificate = async (req, res) => {
     });
     // QR kod generatsiya qilish
     const qrCodeDataUrl = await QRCode.toDataURL(
-      `https://crm.praktikum-academy.uz/certificate?code=${condidate[0][0].cert_code}`,
+      `https://umdsoft.uz/certificate?code=${condidate[0][0].cert_code}`,
       {
         color: {
           dark: "#0178b2", // QR kodning rangi
