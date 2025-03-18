@@ -91,10 +91,10 @@ exports.createOnline = async (req, res) => {
         await NewLead.query()
           .insert({
             lead_id: lead.id,
-            target_id: 8,
+            target_id: req.body.target_id,
             edit_date: new Date(),
             edit_time: new Date(),
-            direction_id: 8,
+            direction_id: req.body.direction_id,
           })
           .then(async (newLead) => {
             await LeadAction.query().insert({
