@@ -63,7 +63,7 @@ exports.create = async (req, res) => {
 };
 exports.createOnline = async (req, res) => {
   try {
-    const old_lead = await Lead.query().where("phone", req.body.phone).first();
+    const old_lead = await Lead.query().findOne("phone", req.body.phone);
     if (old_lead) {
       await NewLead.query()
         .insert({
