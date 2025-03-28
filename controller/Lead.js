@@ -9,58 +9,79 @@ const Reklama = require("../models/reklama");
 const LeadTask = require("../models/lead_task");
 const Direction = require("../models/Direction");
 
+// Standart response formatlash uchun helper funksiya
+const sendResponse = (res, status, success, data = null, error = null) => {
+  return res.status(status).json({
+    success,
+    ...(data && { data }),
+    ...(error && { error }),
+  });
+};
+
+// Lead yaratish uchun helper funksiya
+const createNewLead = async (leadData, targetData, userId = null) => {
+  const lead = await Lead.query().insert({
+    name: leadData.full_name || leadData.name,
+    phone: leadData.phone,
+  });
+
+  const newLead = await NewLead.query().insert({
+    lead_id: lead.id,
+    target_id: targetData.target_id,
+    reklama_id: targetData.reklama_id,
+    direction_id: targetData.direction_id,
+    edit_date: new Date(),
+    edit_time: new Date(),
+  });
+
+  await LeadAction.query().insert({
+    lead_id: newLead.id,
+    to: 0,
+    do: 0,
+    user_id: userId,
+  });
+
+  return newLead;
+};
+
 exports.create = async (req, res) => {
   try {
-    const candidate = jwt.decode(req.headers.authorization.split(" ")[1]);
-    const old_lead = await Lead.query().where("phone", req.body.phone).first();
-    if (old_lead) {
-      await NewLead.query()
-        .insert({
-          lead_id: old_lead.id,
-          target_id: req.body.target,
-          edit_date: new Date(),
-          edit_time: new Date(),
-          direction_id: req.body.direction,
-        })
-        .then(async (newLead) => {
-          await LeadAction.query().insert({
-            lead_id: newLead.id,
-            to: 0,
-            do: 0,
-            user_id: candidate.user_id,
-          });
-        });
-      return res.status(200).json({ success: true });
+    if (!req.body.phone || !req.body.full_name) {
+      return sendResponse(res, 400, false, null, "Phone and name are required");
     }
-    await Lead.query()
-      .insert({
-        name: req.body.full_name,
-        phone: req.body.phone,
-      })
-      .then(async (lead) => {
-        await NewLead.query()
-          .insert({
-            lead_id: lead.id,
-            target_id: req.body.target,
-            edit_date: new Date(),
-            edit_time: new Date(),
-            direction_id: req.body.direction,
-          })
-          .then(async (newLead) => {
-            await LeadAction.query().insert({
-              lead_id: newLead.id,
-              to: 0,
-              do: 0,
-              user_id: candidate.user_id,
-            });
-          });
+
+    const candidate = jwt.decode(req.headers.authorization?.split(" ")[1]);
+    if (!candidate?.user_id) {
+      return sendResponse(res, 401, false, null, "Unauthorized");
+    }
+
+    const old_lead = await Lead.query().where("phone", req.body.phone).first();
+
+    if (old_lead) {
+      await NewLead.query().insert({
+        lead_id: old_lead.id,
+        target_id: req.body.target,
+        direction_id: req.body.direction,
+        edit_date: new Date(),
+        edit_time: new Date(),
       });
 
-    return res.status(200).json({ success: true });
-  } catch (e) {
-    return console.log(e);
+      return sendResponse(res, 200, true);
+    }
+
+    await createNewLead(
+      req.body,
+      { target_id: req.body.target, direction_id: req.body.direction },
+      candidate.user_id
+    );
+
+    return sendResponse(res, 200, true);
+  } catch (error) {
+    console.error("Create lead error:", error);
+    return sendResponse(res, 500, false, null, "Internal server error");
   }
 };
+
 exports.createOnline = async (req, res) => {
   try {
     const old_lead = await Lead.query().where("phone", req.body.phone).first();
@@ -86,6 +107,7 @@ exports.createOnline = async (req, res) => {
       .insert({
         name: req.body.full_name,
         phone: req.body.phone,
+        form_id: req.body.form_id,
       })
       .then(async (lead) => {
         await NewLead.query()
@@ -93,7 +115,7 @@ exports.createOnline = async (req, res) => {
             lead_id: lead.id,
             target_id: 8,
             edit_date: new Date(),
-            edit_time: new Date()
+            edit_time: new Date(),
           })
           .then(async (newLead) => {
             await LeadAction.query().insert({
@@ -110,6 +132,7 @@ exports.createOnline = async (req, res) => {
     return console.log(e);
   }
 };
+
 exports.register = async (req, res) => {
   try {
     const old_lead = await Lead.query().where("phone", req.body.phone).first();
@@ -164,6 +187,7 @@ exports.register = async (req, res) => {
     return console.log(e);
   }
 };
+
 exports.createSite = async (req, res) => {
   try {
     const reklama = await Reklama.query()
@@ -216,6 +240,7 @@ exports.createSite = async (req, res) => {
     return console.log(e);
   }
 };
+
 exports.getTarget = async (req, res) => {
   try {
     const target = await Target.query().select("*");
@@ -225,29 +250,39 @@ exports.getTarget = async (req, res) => {
     console.log(e);
   }
 };
+
 exports.getById = async (req, res) => {
   try {
-    const lead = await Lead.query().where("id", req.params.id).first();
+    if (!req.params.id) {
+      return sendResponse(res, 400, false, null, "Lead ID is required");
+    }
+
+    const lead = await Lead.query().findById(req.params.id);
+    if (!lead) {
+      return sendResponse(res, 404, false, null, "Lead not found");
+    }
+
     const newLead = await NewLead.query()
       .where("lead_id", lead.id)
       .orderBy("id", "desc")
       .first();
-    const actions = await LeadAction.query()
-      .alias("la") // LeadAction uchun alias belgilash
-      .join("user AS u", "la.user_id", "u.id") // `user` jadvali bilan join qilish
-      .select("la.*", "u.name AS user_name") // Tanlangan ustunlar
-      .where("la.lead_id", newLead.id) // `lead_id` ustuni `newLead.id` ga
-      .orderBy("la.id", "desc"); // ID bo‘yicha tartiblash
 
-    return res.status(200).json({
-      success: true,
+    const actions = await LeadAction.query()
+      .alias("la")
+      .join("user AS u", "la.user_id", "u.id")
+      .select("la.*", "u.name AS user_name")
+      .where("la.lead_id", newLead.id)
+      .orderBy("la.id", "desc");
+
+    return sendResponse(res, 200, true, {
       lead,
       newLead: newLead.id,
       action: newLead.action,
-      actions: actions,
+      actions,
     });
-  } catch (e) {
-    console.log(e);
+  } catch (error) {
+    console.error("Get lead by ID error:", error);
+    return sendResponse(res, 500, false, null, "Internal server error");
   }
 };
 
@@ -276,29 +311,36 @@ exports.getByNew = async (req, res) => {
 
 exports.editAction = async (req, res) => {
   try {
-    NewLead.query()
-      .findById(req.params.id)
-      .update({
-        action: req.body.action,
-        edit_date: new Date(),
-        edit_time: new Date(),
-      })
-      .then(async (lead) => {
-        const actions = await LeadAction.query()
-          .where("lead_id", req.params.id)
-          .first();
-        await LeadAction.query().insert({
-          lead_id: req.params.id,
-          to: actions.do,
-          do: req.body.action,
-        });
-        return res.status(200).json({ success: true });
-      })
-      .catch((e) => {
-        return console.log(e);
-      });
-  } catch (e) {
-    console.log(e);
+    if (!req.params.id || req.body.action === undefined) {
+      return sendResponse(res, 400, false, null, "Invalid request parameters");
+    }
+
+    const lead = await NewLead.query().findById(req.params.id);
+    if (!lead) {
+      return sendResponse(res, 404, false, null, "Lead not found");
+    }
+
+    await lead.$query().update({
+      action: req.body.action,
+      edit_date: new Date(),
+      edit_time: new Date(),
+    });
+
+    const lastAction = await LeadAction.query()
+      .where("lead_id", req.params.id)
+      .orderBy("id", "desc")
+      .first();
+
+    await LeadAction.query().insert({
+      lead_id: req.params.id,
+      to: lastAction?.do || 0,
+      do: req.body.action,
+    });
+
+    return sendResponse(res, 200, true);
+  } catch (error) {
+    console.error("Edit action error:", error);
+    return sendResponse(res, 500, false, null, "Internal server error");
   }
 };
 
@@ -333,6 +375,7 @@ exports.postInterested = async (req, res) => {
     console.log(error);
   }
 };
+
 exports.editKanban = async (req, res) => {
   try {
     const candidate = jwt.decode(req.headers.authorization.split(" ")[1]);
@@ -350,6 +393,7 @@ exports.editKanban = async (req, res) => {
     console.log(e);
   }
 };
+
 exports.createAction = async (req, res) => {
   try {
     const candidate = jwt.decode(req.headers.authorization.split(" ")[1]);
@@ -364,6 +408,7 @@ exports.createAction = async (req, res) => {
     console.log(e);
   }
 };
+
 exports.editLead = async (req, res) => {
   try {
     const lead = await Lead.query().findById(req.params.id);
@@ -416,10 +461,11 @@ exports.getTasksLead = async (req, res) => {
 exports.getCandidate = async (req, res) => {
   try {
     const candidates = await NewLead.query()
-    .select("new_lead.*", "leads.*", "direction.name_org")
-    .leftJoin("leads", "new_lead.lead_id", "leads.id")
-    .leftJoin("direction", "new_lead.direction_id", "direction.id")
-    .where('new_lead.action', 2).orWhere('new_lead.action', 3)
+      .select("new_lead.*", "leads.*", "direction.name_org")
+      .leftJoin("leads", "new_lead.lead_id", "leads.id")
+      .leftJoin("direction", "new_lead.direction_id", "direction.id")
+      .where("new_lead.action", 2)
+      .orWhere("new_lead.action", 3);
     return res.status(200).json({ success: true, candidates });
   } catch (error) {
     console.log(error);

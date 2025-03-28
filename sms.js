@@ -11,9 +11,7 @@ const sendSms = async () => {
     })
     .then(function (response) {
       for (let i = 0; i < con.length; i++) {
-        const message = `Ingliz (IELTS 7+) va Rus tilini mukammal bilasizmi? Urganch shahridagi Praktikum Academy siz dars bera olasiz! Qiziqarli jamoa va qulay sharoitlar sizni kutmoqda! 
-        Hoziroq ro'yhatdan o'ting va ishga joylashing: 
-        https://forms.gle/naEYtfuBg9xpVYf27`;
+        const message = `Ramazon oyi yakuniga qadar yangi kasb egasiga aylaning! Bizning 2 yillik tajribamizni 1 oyda o'rganib, daromad olishni boshlang. Batafsil https://target.umdsoft.uz`;
         axios
           .post(
             "https://notify.eskiz.uz/api/message/sms/send",
