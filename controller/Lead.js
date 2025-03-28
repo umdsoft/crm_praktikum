@@ -226,6 +226,7 @@ exports.createSite = async (req, res) => {
             edit_date: new Date(),
             edit_time: new Date(),
             reklama_id: reklama.id,
+            direction_id: req.body.direction_id
           })
           .then(async (newLead) => {
             await LeadAction.query().insert({
