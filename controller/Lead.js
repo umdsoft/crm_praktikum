@@ -116,6 +116,7 @@ exports.createOnline = async (req, res) => {
             target_id: req.body.target_id,
             edit_date: new Date(),
             edit_time: new Date(),
+            direction_id: req.body.direction_id
           })
           .then(async (newLead) => {
             await LeadAction.query().insert({

@@ -27,6 +27,7 @@ app.use(
 );
 const allowedOrigins = [
   'http://localhost:3000', // Development
+  'http://localhost:5173', // Development
   'https://umdsoft.uz', // Production domain 1
   'https://target.umdsoft.uz', // Production domain 2
   // Add more domains as needed
