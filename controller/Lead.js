@@ -84,7 +84,7 @@ exports.create = async (req, res) => {
 
 exports.createOnline = async (req, res) => {
   try {
-    const old_lead = await Lead.query().where("phone", req.body.phone).first();
+    const old_lead = await Lead.query().findOne("phone", req.body.phone);
     if (old_lead) {
       await NewLead.query()
         .insert({
@@ -92,7 +92,7 @@ exports.createOnline = async (req, res) => {
           target_id: req.body.target,
           edit_date: new Date(),
           edit_time: new Date(),
-          direction_id: req.body.direction,
+          direction_id: 8,
         })
         .then(async (newLead) => {
           await LeadAction.query().insert({
@@ -113,7 +113,7 @@ exports.createOnline = async (req, res) => {
         await NewLead.query()
           .insert({
             lead_id: lead.id,
-            target_id: 8,
+            target_id: req.body.target_id,
             edit_date: new Date(),
             edit_time: new Date(),
           })
