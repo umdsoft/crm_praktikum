@@ -92,7 +92,7 @@ exports.createOnline = async (req, res) => {
           target_id: req.body.target,
           edit_date: new Date(),
           edit_time: new Date(),
-          direction_id: 8,
+          direction_id: req.body.direction_id,
         })
         .then(async (newLead) => {
           await LeadAction.query().insert({
@@ -150,6 +150,7 @@ exports.register = async (req, res) => {
           reklama_id: ads.id,
           edit_date: new Date(),
           edit_time: new Date(),
+          direction_id: req.body.direction_id
         })
         .then(async (newLead) => {
           await LeadAction.query().insert({
@@ -173,6 +174,7 @@ exports.register = async (req, res) => {
             reklama_id: ads.id,
             edit_date: new Date(),
             edit_time: new Date(),
+            direction_id: req.body.direction_id
           })
           .then(async (newLead) => {
             await LeadAction.query().insert({
@@ -203,6 +205,7 @@ exports.createSite = async (req, res) => {
           edit_date: new Date(),
           edit_time: new Date(),
           reklama_id: reklama.id,
+          direction_id: req.body.direction_id
         })
         .then(async (newLead) => {
           await LeadAction.query().insert({
