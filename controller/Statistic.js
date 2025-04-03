@@ -144,14 +144,12 @@ exports.adStatistic = async (req, res) => {
         ad_form af
       LEFT JOIN 
         leads l ON af.id = l.form_id -- ad_form va leads jadvali orasidagi bog'lanish
-      WHERE 
-        DATE_FORMAT(l.date, '%Y-%m') = ? -- Faqat tanlangan oylik ma'lumotlar
+    
       GROUP BY 
         af.name -- Forma nomi bo'yicha guruhlash
       ORDER BY 
         lead_count DESC; -- Lidlar soni bo'yicha kamayish tartibida saralash
-    `,
-      [date]
+    `
     );
 
     // Natijani talab qilingan formatga o'zlashtirish
