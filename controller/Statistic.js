@@ -128,12 +128,9 @@ exports.adStatistic = async (req, res) => {
         new_lead nl
       JOIN 
         target t ON nl.target_id = t.id -- new_lead jadvali va target jadvali oralig'i
-      WHERE 
-        DATE_FORMAT(nl.created, '%Y-%m') = ? -- Faqat tanlangan oylik ma'lumotlar
       GROUP BY 
         t.name;
-    `,
-      [date]
+    `
     );
     const stat = await AdForm.knex().raw(
       `
