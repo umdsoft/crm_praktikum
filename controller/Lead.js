@@ -293,24 +293,36 @@ exports.getById = async (req, res) => {
 
 exports.getByNew = async (req, res) => {
   try {
-    const limit = req.query.limit || 10;
-    const skip = (req.query.page - 1) * limit || 0;
-    const action = req.query.action || 0;
+    const limit = parseInt(req.query.limit) || 10;
+    const page = parseInt(req.query.page) || 1;
+    const skip = (page - 1) * limit;
+    const action = parseInt(req.query.action) || 0;
+
     const leads = await NewLead.knex().raw(`
-    SELECT nl.id,nl.created,nl.time,l.name,l.id as uid,l.phone,t.name as target,t.id as tid,d.name_org as direction  FROM new_lead nl 
-    left join leads l on nl.lead_id = l.id
-    left join target t on nl.target_id = t.id
-    left join direction d on nl.direction_id = d.id
-    WHERE nl.action = ${action}
-    ORDER BY nl.id DESC
-    limit ${limit}
-    OFFSET ${skip};
-    `);
+      SELECT nl.id, nl.created, nl.time, l.name, l.id as uid, l.phone, t.name as target, t.id as tid, d.name_org as direction
+      FROM new_lead nl
+      LEFT JOIN leads l ON nl.lead_id = l.id
+      LEFT JOIN target t ON nl.target_id = t.id
+      LEFT JOIN direction d ON nl.direction_id = d.id
+      WHERE nl.action = ?
+      AND nl.id IN (
+        SELECT MAX(nl2.id)
+        FROM new_lead nl2
+        WHERE nl2.lead_id = nl.lead_id
+        AND nl2.action = nl.action
+        GROUP BY nl2.lead_id, nl2.action
+      )
+      ORDER BY nl.id DESC
+      LIMIT ?
+      OFFSET ?;
+    `, [action, limit, skip]);
+
     return res
       .status(200)
       .json({ success: true, leads: leads[0], total: leads[0].length, limit });
   } catch (e) {
     console.log(e);
+    return res.status(500).json({ success: false, message: 'Server error' });
   }
 };
 
